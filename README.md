@@ -61,9 +61,11 @@ This project uses **Capacitor** for native Android builds with automated GitHub 
 ### Automated Builds (GitHub Actions)
 
 Every push to `main` automatically triggers a build workflow that:
+- ✅ Installs dependencies
 - ✅ Builds the web app with Vite
-- ✅ Syncs with Capacitor
-- ✅ Compiles the Android APK
+- ✅ Adds Android platform with Capacitor
+- ✅ Syncs web assets to Android
+- ✅ Compiles the Android APK with Gradle
 - ✅ Uploads the APK as a downloadable artifact
 
 **Download your APK:**
