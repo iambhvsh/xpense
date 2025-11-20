@@ -28,6 +28,9 @@ jobs:
       - name: Add Android platform
         run: npx cap add android
 
+      - name: Generate App Icons
+        run: npx capacitor-assets generate --android
+
       - name: Sync Capacitor
         run: npx cap sync android
 
@@ -55,16 +58,15 @@ jobs:
           KEY_PASSWORD: xpense123
         run: ./gradlew assembleRelease
 
-      - name: List APK files
+      - name: List and verify APK
         run: |
+          echo "Listing APK files:"
           ls -la android/app/build/outputs/apk/release/
-
-      - name: Rename APK
-        run: |
-          find android/app/build/outputs/apk/release/ -name "*.apk" -exec cp {} android/app/build/outputs/apk/release/xpense.apk \;
+          echo "Verifying APK signature:"
+          jarsigner -verify -verbose -certs android/app/build/outputs/apk/release/app-release.apk || echo "APK verification failed or unsigned"
 
       - name: Upload Release APK
         uses: actions/upload-artifact@v4
         with:
           name: xpense-release
-          path: android/app/build/outputs/apk/release/xpense.apk
+          path: android/app/build/outputs/apk/release/app-release.apk
