@@ -6,16 +6,29 @@
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal"
-    },
-    "preview": {
       "distribution": "internal",
+      "node": "18.18.0",
       "android": {
+        "gradleCommand": ":app:assembleDebug",
         "buildType": "apk"
       }
     },
-    "production": {
+    "preview": {
+      "distribution": "internal",
+      "node": "18.18.0",
+      "env": {
+        "NODE_ENV": "production"
+      },
       "android": {
+        "gradleCommand": ":app:assembleRelease",
+        "buildType": "apk",
+        "withoutCredentials": true
+      }
+    },
+    "production": {
+      "node": "18.18.0",
+      "android": {
+        "gradleCommand": ":app:assembleRelease",
         "buildType": "apk"
       }
     }
