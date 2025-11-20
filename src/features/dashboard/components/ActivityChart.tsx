@@ -14,9 +14,9 @@ interface ActivityChartProps {
   mounted: boolean;
 }
 
-export const ActivityChart: React.FC<ActivityChartProps> = ({ data, mounted }) => {
+export const ActivityChart: React.FC<ActivityChartProps> = React.memo(({ data, mounted }) => {
   return (
-    <div className="bg-[#1C1C1E] md:bg-[#F5F5F7] p-6 rounded-[28px] flex flex-col shadow-sm">
+    <div className="bg-[#1C1C1E] md:bg-[#F5F5F7] p-6 rounded-[28px] flex flex-col shadow-sm contain-layout gpu-accelerated">
       <div className="mb-4 shrink-0">
         <h4 className="text-[22px] font-bold text-white md:text-[#1D1D1F] tracking-tight">
           Activity
@@ -135,4 +135,8 @@ export const ActivityChart: React.FC<ActivityChartProps> = ({ data, mounted }) =
       </div>
     </div>
   );
-};
+}, (prevProps, nextProps) => {
+  return prevProps.mounted === nextProps.mounted && 
+         prevProps.data.length === nextProps.data.length &&
+         JSON.stringify(prevProps.data) === JSON.stringify(nextProps.data);
+});

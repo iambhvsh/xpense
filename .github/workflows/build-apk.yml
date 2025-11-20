@@ -43,12 +43,24 @@ jobs:
       - name: Download Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Build Debug APK
-        working-directory: android
-        run: ./gradlew assembleDebug
+      - name: Generate Temporary Keystore
+        run: |
+          keytool -genkey -v -keystore android/app/release.keystore -alias xpense -keyalg RSA -keysize 2048 -validity 10000 -storepass xpense123 -keypass xpense123 -dname "CN=Xpense, OU=Development, O=Xpense, L=City, S=State, C=US"
 
-      - name: Upload APK artifact
+      - name: Build Release APK
+        working-directory: android
+        env:
+          KEYSTORE_PASSWORD: xpense123
+          KEY_ALIAS: xpense
+          KEY_PASSWORD: xpense123
+        run: ./gradlew assembleRelease
+
+      - name: Rename APK
+        run: |
+          mv android/app/build/outputs/apk/release/app-release.apk android/app/build/outputs/apk/release/xpense.apk
+
+      - name: Upload Release APK
         uses: actions/upload-artifact@v4
         with:
-          name: app-debug
-          path: android/app/build/outputs/apk/debug/*.apk
+          name: xpense-release
+          path: android/app/build/outputs/apk/release/xpense.apk

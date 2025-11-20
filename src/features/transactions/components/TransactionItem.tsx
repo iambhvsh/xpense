@@ -25,23 +25,32 @@ const getIcon = (category: Category) => {
   }
 };
 
-export const TransactionItem: React.FC<TransactionItemProps> = ({ 
+export const TransactionItem: React.FC<TransactionItemProps> = React.memo(({ 
   transaction, 
   onDelete, 
   isLast 
 }) => {
+  const handleDelete = React.useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    onDelete(transaction.id);
+  }, [transaction.id, onDelete]);
+
+  const icon = React.useMemo(() => getIcon(transaction.category), [transaction.category]);
+  const formattedAmount = React.useMemo(() => formatCurrency(transaction.amount), [transaction.amount]);
+  const formattedDate = React.useMemo(() => formatDate(transaction.date), [transaction.date]);
+
   return (
-    <div className="relative flex items-center justify-between px-5 py-4 transition-opacity min-h-[72px]">
+    <div className="relative flex items-center justify-between px-5 py-4 min-h-[72px] transaction-list-item">
       {!isLast && (
         <div className="absolute bottom-0 left-[76px] right-0 h-[0.33px] bg-[#38383A]" />
       )}
 
       <div className="flex items-center gap-4 overflow-hidden flex-1">
         <div 
-          className="w-12 h-12 rounded-[14px] flex items-center justify-center text-white shrink-0 shadow-sm"
+          className="w-12 h-12 rounded-[14px] flex items-center justify-center text-white shrink-0 shadow-sm gpu-accelerated"
           style={{ backgroundColor: CATEGORY_COLORS[transaction.category] }}
         >
-          {getIcon(transaction.category)}
+          {icon}
         </div>
         
         <div className="flex flex-col min-w-0 flex-1">
@@ -49,7 +58,7 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({
             {transaction.description}
           </h4>
           <span className="text-[13px] text-[#8E8E93] mt-1.5 truncate tracking-[-0.08px] font-medium">
-            {formatDate(transaction.date)}
+            {formattedDate}
           </span>
         </div>
       </div>
@@ -62,15 +71,12 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({
           style={{ fontVariantNumeric: 'tabular-nums' }}
         >
           {transaction.isExpense ? '-' : '+'}
-          {formatCurrency(transaction.amount)}
+          {formattedAmount}
         </span>
         
         <button 
-          onClick={(e) => { 
-            e.stopPropagation(); 
-            onDelete(transaction.id); 
-          }}
-          className="w-9 h-9 flex items-center justify-center text-[#8E8E93] hover:text-ios-red active:opacity-60 rounded-full transition-all"
+          onClick={handleDelete}
+          className="w-9 h-9 flex items-center justify-center text-[#8E8E93] hover:text-ios-red active:opacity-60 rounded-full transition-opacity"
           aria-label="Delete transaction"
         >
           <Trash2 size={18} strokeWidth={2.5} />
@@ -78,4 +84,9 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({
       </div>
     </div>
   );
-};
+}, (prevProps, nextProps) => {
+  return prevProps.transaction.id === nextProps.transaction.id &&
+         prevProps.transaction.amount === nextProps.transaction.amount &&
+         prevProps.transaction.description === nextProps.transaction.description &&
+         prevProps.isLast === nextProps.isLast;
+});

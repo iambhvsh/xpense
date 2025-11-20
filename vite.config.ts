@@ -20,6 +20,15 @@ export default defineConfig(({ mode }) => {
         }
       },
       build: {
+        target: 'es2015',
+        minify: 'terser',
+        terserOptions: {
+          compress: {
+            drop_console: true,
+            drop_debugger: true,
+            pure_funcs: ['console.log', 'console.info'],
+          },
+        },
         rollupOptions: {
           output: {
             manualChunks: {
@@ -31,6 +40,12 @@ export default defineConfig(({ mode }) => {
           }
         },
         chunkSizeWarningLimit: 600,
+        cssCodeSplit: true,
+        sourcemap: false,
+      },
+      optimizeDeps: {
+        include: ['react', 'react-dom', 'lucide-react'],
+        exclude: ['@google/genai'],
       }
     };
 });

@@ -7,15 +7,17 @@ interface StatCardProps {
   type: 'balance' | 'income' | 'expense';
 }
 
-export const StatCard: React.FC<StatCardProps> = ({ label, value, type }) => {
+export const StatCard: React.FC<StatCardProps> = React.memo(({ label, value, type }) => {
   const valueColor = type === 'balance' 
     ? 'text-white md:text-[#1D1D1F]' 
     : type === 'income' 
     ? 'text-ios-green' 
     : 'text-ios-red';
   
+  const formattedValue = React.useMemo(() => formatCurrency(value), [value]);
+  
   return (
-    <div className="bg-[#1C1C1E] md:bg-[#F5F5F7] p-6 rounded-[28px] flex flex-col justify-between h-[130px] shadow-sm">
+    <div className="bg-[#1C1C1E] md:bg-[#F5F5F7] p-6 rounded-[28px] flex flex-col justify-between h-[130px] shadow-sm contain-layout gpu-accelerated">
       <span className="text-[13px] font-bold text-[#8E8E93] uppercase tracking-[0.06em]">
         {label}
       </span>
@@ -26,9 +28,11 @@ export const StatCard: React.FC<StatCardProps> = ({ label, value, type }) => {
         >
           {type === 'expense' && '-'}
           {type === 'income' && '+'}
-          {formatCurrency(value)}
+          {formattedValue}
         </h3>
       </div>
     </div>
   );
-};
+}, (prevProps, nextProps) => {
+  return prevProps.value === nextProps.value && prevProps.type === nextProps.type;
+});

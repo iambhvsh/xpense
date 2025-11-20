@@ -14,12 +14,15 @@ export const Dashboard: React.FC<DashboardProps> = React.memo(({ transactions })
   const { stats, balance, categoryData, activityData } = useDashboardData(transactions);
   
   useEffect(() => {
-    const timer = setTimeout(() => setMounted(true), 100);
-    return () => clearTimeout(timer);
+    // Use requestAnimationFrame for smoother mounting
+    const rafId = requestAnimationFrame(() => {
+      setMounted(true);
+    });
+    return () => cancelAnimationFrame(rafId);
   }, []);
 
   return (
-    <div className="space-y-4 pb-6">
+    <div className="space-y-4 pb-6 contain-layout">
       {/* Summary Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <StatCard label="Balance" value={balance} type="balance" />
@@ -34,4 +37,8 @@ export const Dashboard: React.FC<DashboardProps> = React.memo(({ transactions })
       </div>
     </div>
   );
+}, (prevProps, nextProps) => {
+  // Custom comparison for better performance
+  return prevProps.transactions.length === nextProps.transactions.length &&
+         prevProps.transactions[0]?.id === nextProps.transactions[0]?.id;
 });
