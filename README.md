@@ -56,39 +56,46 @@ A beautifully designed expense tracking application that **strictly follows Appl
 
 ## 📱 Building for Android
 
-This project uses **Capacitor** + **EAS Build** for cloud-based Android builds.
+This project uses **Capacitor** for native Android builds with automated GitHub Actions.
 
-### First Time Setup
+### Automated Builds (GitHub Actions)
 
-1. **Install EAS CLI globally:**
-   ```bash
-   npm install -g eas-cli
-   ```
+Every push to `main` automatically triggers a build workflow that:
+- ✅ Builds the web app with Vite
+- ✅ Syncs with Capacitor
+- ✅ Compiles the Android APK
+- ✅ Uploads the APK as a downloadable artifact
 
-2. **Login to Expo:**
-   ```bash
-   eas login
-   ```
+**Download your APK:**
+1. Go to the [Actions tab](https://github.com/iambhvsh/xpense/actions) on GitHub
+2. Click on the latest workflow run
+3. Download the `app-debug` artifact
 
-### Build Android APK
+### Local Development
 
-**Cloud build (recommended):**
-```bash
-npm run build:android
-```
+**Prerequisites:**
+- Android Studio
+- Java 17 or higher
 
-This will:
-- Build your web app with Vite
-- Sync with Capacitor
-- Build the APK in the cloud
-- Provide a download link when complete
-
-**Local development:**
+**Build locally:**
 ```bash
 npm run android
 ```
 
-Opens Android Studio for local testing.
+This will:
+- Build your web app
+- Sync with Capacitor
+- Open Android Studio for testing
+
+**Manual APK build:**
+```bash
+npm run build
+npx cap sync android
+cd android
+./gradlew assembleDebug
+```
+
+The APK will be in `android/app/build/outputs/apk/debug/`
 
 ## 🎨 iOS Design System
 
@@ -204,7 +211,7 @@ List Item Height: 44-64px
 - **Recharts 3.4** - Beautiful charts
 - **Lucide React** - iOS-style icons
 - **Google Gemini AI** - AI-powered insights and OCR
-- **EAS Build** - Cloud-based Android builds
+- **GitHub Actions** - Automated CI/CD for Android builds
 
 ## 📦 Project Structure
 
@@ -228,9 +235,9 @@ xpense/
 │   └── index.css              # iOS design system
 ├── android/                   # Capacitor Android (generated)
 ├── assets/                    # App icons and splash screens
+├── .github/workflows/         # GitHub Actions CI/CD
 ├── capacitor.config.ts        # Capacitor configuration
-├── app.json                   # EAS Build configuration
-├── eas.json                   # EAS Build profiles
+├── app.json                   # App metadata
 └── package.json               # Dependencies
 ```
 
@@ -253,7 +260,6 @@ npm run preview      # Preview production build
 npm run cap:sync     # Sync web build with Capacitor
 npm run cap:open     # Open Android Studio
 npm run android      # Build and open in Android Studio
-npm run build:android # Build APK in the cloud with EAS
 ```
 
 ## 🤝 Contributing
