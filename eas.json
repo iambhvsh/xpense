@@ -23,7 +23,12 @@
         "gradleCommand": ":app:assembleRelease",
         "buildType": "apk",
         "withoutCredentials": true
-      }
+      },
+      "cache": {
+        "disabled": false,
+        "customPaths": ["node_modules"]
+      },
+      "prebuildCommand": "rm -f pnpm-lock.yaml"
     },
     "production": {
       "node": "18.18.0",
