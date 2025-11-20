@@ -70,12 +70,24 @@ jobs:
         run: |
           keytool -genkey -v -keystore android/app/release.keystore -alias xpense -keyalg RSA -keysize 2048 -validity 10000 -storepass xpense123 -keypass xpense123 -dname "CN=Xpense, OU=Development, O=Xpense, L=City, S=State, C=US"
 
+      - name: Configure Signing in build.gradle
+        run: |
+          cat >> android/app/build.gradle << 'EOF'
+          
+          android.signingConfigs {
+              release {
+                  storeFile file('release.keystore')
+                  storePassword 'xpense123'
+                  keyAlias 'xpense'
+                  keyPassword 'xpense123'
+              }
+          }
+          
+          android.buildTypes.release.signingConfig android.signingConfigs.release
+          EOF
+
       - name: Build Release APK
         working-directory: android
-        env:
-          KEYSTORE_PASSWORD: xpense123
-          KEY_ALIAS: xpense
-          KEY_PASSWORD: xpense123
         run: ./gradlew assembleRelease --no-daemon
 
       - name: List and verify APK
