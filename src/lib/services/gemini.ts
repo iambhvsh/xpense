@@ -2,7 +2,7 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { Transaction, ReceiptData, Category } from "../types";
 
 const getApiKey = () => {
-  return localStorage.getItem('gemini-api-key') || process.env.API_KEY || '';
+  return localStorage.getItem('xpense-api-key') || process.env.API_KEY || '';
 };
 
 const createAI = () => {

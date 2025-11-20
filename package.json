@@ -1,17 +1,16 @@
 {
-  "name": "gemini-expense-tracker",
+  "name": "xpense",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "cap:sync": "pnpm run build && cap sync",
+    "cap:sync": "npm run build && cap sync",
     "cap:open": "cap open android",
-    "android": "pnpm run cap:sync && cap open android",
-    "build:apk": "pnpm run build && eas build --platform android --profile preview --local",
-    "build:apk:cloud": "pnpm run build && pnpm exec cap sync && eas build --platform android --profile preview"
+    "android": "npm run cap:sync && cap open android",
+    "build:android": "eas build --platform android --profile preview"
   },
   "dependencies": {
     "@capacitor/android": "^7.4.4",
@@ -20,18 +19,21 @@
     "@google/genai": "^1.30.0",
     "lucide-react": "^0.554.0",
     "marked": "^17.0.0",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "react-markdown": "^10.1.0",
     "recharts": "^3.4.1"
   },
   "devDependencies": {
+    "@types/marked": "^6.0.0",
     "@types/node": "^22.14.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^5.0.0",
     "autoprefixer": "^10.4.22",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.18",
-    "typescript": "~5.8.2",
+    "typescript": "~5.6.3",
     "vite": "^6.2.0"
   }
 }

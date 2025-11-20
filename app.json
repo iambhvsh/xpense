@@ -1,18 +1,18 @@
 {
   "expo": {
-    "name": "Wallet",
-    "slug": "wallet-expense-tracker",
+    "name": "xpense",
+    "slug": "xpense",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "dark",
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#000000"
     },
     "android": {
-      "package": "com.wallet.expensetracker",
+      "package": "com.xpense.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#000000"
@@ -20,7 +20,7 @@
     },
     "extra": {
       "eas": {
-        "projectId": "0dcda5c7-65b6-4c42-a412-53a32711e497"
+        "projectId": "b3c7513b-30dc-48bc-8268-85104bd9468c"
       }
     }
   }

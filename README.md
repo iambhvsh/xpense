@@ -1,11 +1,94 @@
-# 💰 Wallet - iOS-Style Expense Tracker
+# 💰 xpense - iOS-Style Expense Tracker
 
 A beautifully designed expense tracking application that **strictly follows Apple's iOS Human Interface Guidelines**, powered by Google's Gemini AI.
 
 ![iOS Design](https://img.shields.io/badge/Design-iOS%20HIG-007AFF?style=for-the-badge&logo=apple)
-![React](https://img.shields.io/badge/React-19.2-61DAFB?style=for-the-badge&logo=react)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?style=for-the-badge&logo=typescript)
+![React](https://img.shields.io/badge/React-18.3-61DAFB?style=for-the-badge&logo=react)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.6-3178C6?style=for-the-badge&logo=typescript)
 ![Tailwind](https://img.shields.io/badge/Tailwind-3.4-38B2AC?style=for-the-badge&logo=tailwind-css)
+
+## ✨ Features
+
+- 💸 **Expense Tracking** - Add income and expenses with categories
+- 🤖 **AI Insights** - Gemini-powered financial advice
+- 📸 **Receipt Scanning** - OCR with Gemini Vision API
+- 🏷️ **Auto-categorization** - Smart category suggestions
+- 📊 **Beautiful Charts** - Pie and bar charts with iOS styling
+- 📱 **Responsive Design** - iPhone, iPad, and Mac optimized
+- 🔒 **Privacy First** - All data stored locally on your device
+
+## 🚀 Quick Start
+
+### Prerequisites
+- Node.js 18 or higher
+- npm
+- Gemini API key ([Get one here](https://aistudio.google.com/app/apikey))
+
+### Installation
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/yourusername/xpense.git
+   cd xpense
+   ```
+
+2. **Install dependencies:**
+   ```bash
+   npm install
+   ```
+
+3. **Set your Gemini API key:**
+   
+   Create a `.env` file in the root directory:
+   ```env
+   GEMINI_API_KEY=your_api_key_here
+   ```
+
+4. **Run the development server:**
+   ```bash
+   npm run dev
+   ```
+
+5. **Open in browser:**
+   ```
+   http://localhost:3000
+   ```
+
+## 📱 Building for Android
+
+This project uses **Capacitor** + **EAS Build** for cloud-based Android builds.
+
+### First Time Setup
+
+1. **Install EAS CLI globally:**
+   ```bash
+   npm install -g eas-cli
+   ```
+
+2. **Login to Expo:**
+   ```bash
+   eas login
+   ```
+
+### Build Android APK
+
+**Cloud build (recommended):**
+```bash
+npm run build:android
+```
+
+This will:
+- Build your web app with Vite
+- Sync with Capacitor
+- Build the APK in the cloud
+- Provide a download link when complete
+
+**Local development:**
+```bash
+npm run android
+```
+
+Opens Android Studio for local testing.
 
 ## 🎨 iOS Design System
 
@@ -61,45 +144,6 @@ This app has been **completely redesigned** to match iOS design standards with p
 - 🚀 **Overscroll Behavior**: iOS-style bounce
 - 🚀 **Hardware Acceleration**: Composite layers
 
-## ✨ Features
-
-- 💸 **Expense Tracking** - Add income and expenses with categories
-- 🤖 **AI Insights** - Gemini-powered financial advice
-- 📸 **Receipt Scanning** - OCR with Gemini Vision API
-- 🏷️ **Auto-categorization** - Smart category suggestions
-- 📊 **Beautiful Charts** - Pie and bar charts with iOS styling
-- 📱 **Responsive Design** - iPhone, iPad, and Mac optimized
-
-## 🚀 Run Locally
-
-**Prerequisites:** Node.js 18+
-
-1. **Install dependencies:**
-   ```bash
-   pnpm install
-   # or
-   npm install
-   ```
-
-2. **Set your Gemini API key:**
-   
-   Edit `.env.local` and add:
-   ```
-   GEMINI_API_KEY=your_api_key_here
-   ```
-
-3. **Run the app:**
-   ```bash
-   pnpm run dev
-   # or
-   npm run dev
-   ```
-
-4. **Open in browser:**
-   ```
-   http://localhost:3000
-   ```
-
 ## 🎨 Design Tokens
 
 ### Colors
@@ -152,37 +196,42 @@ List Item Height: 44-64px
 
 ## 🛠️ Tech Stack
 
-- **React 19.2** - Latest React with concurrent features
-- **TypeScript 5.8** - Type safety
+- **React 18.3** - Latest stable React
+- **TypeScript 5.6** - Type safety
 - **Tailwind CSS 3.4** - Utility-first CSS with custom iOS tokens
-- **Vite 6.4** - Lightning-fast build tool
+- **Vite 6.2** - Lightning-fast build tool
+- **Capacitor 7.4** - Native mobile wrapper
 - **Recharts 3.4** - Beautiful charts
 - **Lucide React** - iOS-style icons
 - **Google Gemini AI** - AI-powered insights and OCR
+- **EAS Build** - Cloud-based Android builds
 
 ## 📦 Project Structure
 
 ```
-src/
-├── components/             # React components
-│   ├── ui/                # Reusable UI components
-│   │   └── Spinner.tsx    # iOS activity indicator
-│   ├── Dashboard.tsx      # Overview with charts
-│   ├── ExpenseForm.tsx    # iOS-style form
-│   ├── ExpenseList.tsx    # Inset grouped list
-│   ├── AiInsights.tsx     # For You card
-│   └── Settings.tsx       # App settings
-├── services/              # External services
-│   └── geminiService.ts   # Gemini AI integration
-├── types/                 # TypeScript definitions
-│   └── index.ts           # Shared types
-├── constants/             # App constants
-│   └── index.ts           # Category colors, initial data
-├── utils/                 # Utility functions
-│   └── currency.ts        # Currency & date formatting
-├── App.tsx                # Main app with iOS navigation
-├── main.tsx               # Application entry point
-└── index.css              # iOS design system
+xpense/
+├── src/
+│   ├── features/              # Feature modules
+│   │   ├── dashboard/         # Overview with charts
+│   │   ├── transactions/      # Transaction list & form
+│   │   ├── insights/          # AI-powered insights
+│   │   └── settings/          # App settings
+│   ├── lib/
+│   │   ├── services/          # External services (Gemini AI)
+│   │   ├── types/             # TypeScript definitions
+│   │   ├── constants/         # App constants
+│   │   └── utils/             # Utility functions
+│   ├── shared/
+│   │   └── components/        # Reusable UI components
+│   ├── App.tsx                # Main app with iOS navigation
+│   ├── main.tsx               # Application entry point
+│   └── index.css              # iOS design system
+├── android/                   # Capacitor Android (generated)
+├── assets/                    # App icons and splash screens
+├── capacitor.config.ts        # Capacitor configuration
+├── app.json                   # EAS Build configuration
+├── eas.json                   # EAS Build profiles
+└── package.json               # Dependencies
 ```
 
 ## 🎯 iOS Design Guidelines Followed
@@ -194,6 +243,22 @@ src/
 - ✅ [Layout](https://developer.apple.com/design/human-interface-guidelines/layout)
 - ✅ [Navigation](https://developer.apple.com/design/human-interface-guidelines/navigation)
 - ✅ [Modality](https://developer.apple.com/design/human-interface-guidelines/modality)
+
+## 🔧 Available Scripts
+
+```bash
+npm run dev          # Start development server
+npm run build        # Build for production
+npm run preview      # Preview production build
+npm run cap:sync     # Sync web build with Capacitor
+npm run cap:open     # Open Android Studio
+npm run android      # Build and open in Android Studio
+npm run build:android # Build APK in the cloud with EAS
+```
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## 📄 License
 

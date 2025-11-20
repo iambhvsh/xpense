@@ -13,7 +13,7 @@ const SettingsPage = lazy(() => import('./features/settings/Settings').then(m =>
 const App: React.FC = () => {
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
     try {
-      const saved = localStorage.getItem('gemini-expenses');
+      const saved = localStorage.getItem('xpense-expenses');
       return saved ? JSON.parse(saved) : INITIAL_TRANSACTIONS;
     } catch {
       return INITIAL_TRANSACTIONS;
@@ -25,7 +25,7 @@ const App: React.FC = () => {
   const [isClosing, setIsClosing] = useState(false);
 
   useEffect(() => {
-    localStorage.setItem('gemini-expenses', JSON.stringify(transactions));
+    localStorage.setItem('xpense-expenses', JSON.stringify(transactions));
   }, [transactions]);
 
   const addTransaction = useCallback((t: Omit<Transaction, 'id'>) => {
@@ -39,7 +39,7 @@ const App: React.FC = () => {
 
   const handleClearData = useCallback(() => {
     if (window.confirm('Are you sure you want to clear all data? This action cannot be undone.')) {
-      localStorage.removeItem('gemini-expenses');
+      localStorage.removeItem('xpense-expenses');
       setTransactions(INITIAL_TRANSACTIONS);
       setActiveTab('overview');
     }

@@ -23,23 +23,12 @@ dist-ssr
 *.sln
 *.sw?
 
-# Environment variables
-.env
-.env.local
-.env.production
-
-# Android
-android/
-.gradle/
-build/
-*.apk
-*.aab
-
-# iOS
-ios/
-
 # Capacitor
+android/
+ios/
 .capacitor/
 
-# EAS
-.eas/
+# Environment
+.env
+.env.local
+.env.*.local

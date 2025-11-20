@@ -43,14 +43,14 @@ export const Settings: React.FC<SettingsProps> = ({ onClearData }) => {
   const [apiKeyInput, setApiKeyInput] = useState('');
   const [hasApiKey, setHasApiKey] = useState(false);
   const [selectedCurrency, setSelectedCurrency] = useState(() => {
-    return localStorage.getItem('wallet-currency') || 'USD';
+    return localStorage.getItem('xpense-currency') || 'USD';
   });
   const [selectedDateFormat, setSelectedDateFormat] = useState(() => {
-    return localStorage.getItem('wallet-date-format') || 'MM/DD/YYYY';
+    return localStorage.getItem('xpense-date-format') || 'MM/DD/YYYY';
   });
 
   useEffect(() => {
-    const data = localStorage.getItem('gemini-expenses');
+    const data = localStorage.getItem('xpense-expenses');
     if (data) {
       const bytes = new Blob([data]).size;
       const kb = (bytes / 1024).toFixed(2);
@@ -64,18 +64,18 @@ export const Settings: React.FC<SettingsProps> = ({ onClearData }) => {
       }
     }
 
-    const apiKey = localStorage.getItem('gemini-api-key');
+    const apiKey = localStorage.getItem('xpense-api-key');
     setHasApiKey(!!apiKey);
   }, []);
 
   const handleExportData = () => {
-    const data = localStorage.getItem('gemini-expenses');
+    const data = localStorage.getItem('xpense-expenses');
     if (data) {
       const blob = new Blob([data], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `wallet-backup-${new Date().toISOString().split('T')[0]}.json`;
+      a.download = `xpense-backup-${new Date().toISOString().split('T')[0]}.json`;
       a.click();
       URL.revokeObjectURL(url);
       
@@ -96,10 +96,10 @@ export const Settings: React.FC<SettingsProps> = ({ onClearData }) => {
           try {
             const data = event.target?.result as string;
             JSON.parse(data);
-            localStorage.setItem('gemini-expenses', data);
+            localStorage.setItem('xpense-expenses', data);
             window.location.reload();
           } catch (error) {
-            alert('Invalid backup file. Please select a valid Wallet backup.');
+            alert('Invalid backup file. Please select a valid xpense backup.');
           }
         };
         reader.readAsText(file);
@@ -135,13 +135,13 @@ export const Settings: React.FC<SettingsProps> = ({ onClearData }) => {
 
   const handleCurrencySelect = (code: string) => {
     setSelectedCurrency(code);
-    localStorage.setItem('wallet-currency', code);
+    localStorage.setItem('xpense-currency', code);
     handleCloseCurrencyPicker();
   };
 
   const handleDateFormatSelect = (format: string) => {
     setSelectedDateFormat(format);
-    localStorage.setItem('wallet-date-format', format);
+    localStorage.setItem('xpense-date-format', format);
     handleCloseDateFormatPicker();
   };
 
@@ -172,14 +172,14 @@ export const Settings: React.FC<SettingsProps> = ({ onClearData }) => {
   };
 
   const handleOpenApiKeyModal = () => {
-    const existingKey = localStorage.getItem('gemini-api-key');
+    const existingKey = localStorage.getItem('xpense-api-key');
     setApiKeyInput(existingKey || '');
     setShowApiKeyModal(true);
   };
 
   const handleSaveApiKey = () => {
     if (apiKeyInput.trim()) {
-      localStorage.setItem('gemini-api-key', apiKeyInput.trim());
+      localStorage.setItem('xpense-api-key', apiKeyInput.trim());
       setHasApiKey(true);
       setShowApiKeyModal(false);
       setApiKeyInput('');
@@ -187,7 +187,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClearData }) => {
   };
 
   const handleRemoveApiKey = () => {
-    localStorage.removeItem('gemini-api-key');
+    localStorage.removeItem('xpense-api-key');
     setHasApiKey(false);
     setApiKeyInput('');
     setShowApiKeyModal(false);
@@ -205,7 +205,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClearData }) => {
                   <Wallet className="text-white" size={32} strokeWidth={2.5} />
                 </div>
                 <div className="flex-1">
-                  <div className="text-[22px] font-bold text-white md:text-[#000000] tracking-[-0.41px]">Wallet</div>
+                  <div className="text-[22px] font-bold text-white md:text-[#000000] tracking-[-0.41px]">xpense</div>
                   <div className="text-[13px] text-[#8E8E93] tracking-[-0.08px] mt-0.5">Personal expense tracker</div>
                 </div>
               </div>
@@ -528,7 +528,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClearData }) => {
               <div className="bg-[#2C2C2E] md:bg-[#F5F5F7] rounded-[10px] p-4 space-y-4">
                 <div>
                   <h4 className="text-[15px] font-semibold text-white md:text-[#000000] tracking-[-0.24px] mb-2">Your Privacy Matters</h4>
-                  <p className="text-[13px] text-[#8E8E93] tracking-[-0.08px] leading-[18px]">Wallet does not collect, transmit, or share any of your personal data. All information you enter is stored locally on your device.</p>
+                  <p className="text-[13px] text-[#8E8E93] tracking-[-0.08px] leading-[18px]">xpense does not collect, transmit, or share any of your personal data. All information you enter is stored locally on your device.</p>
                 </div>
                 <div className="h-[0.5px] bg-[#38383A] md:bg-[#C6C6C8]"></div>
                 <div>

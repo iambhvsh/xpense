@@ -1,8 +1,8 @@
 import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.wallet.expensetracker',
-  appName: 'Wallet',
+  appId: 'com.xpense.app',
+  appName: 'xpense',
   webDir: 'dist',
   server: {
     androidScheme: 'https'

@@ -4,41 +4,20 @@
     "appVersionSource": "remote"
   },
   "build": {
-    "development": {
-      "developmentClient": true,
-      "distribution": "internal",
-      "node": "18.18.0",
-      "android": {
-        "gradleCommand": ":app:assembleDebug",
-        "buildType": "apk"
-      }
-    },
     "preview": {
       "distribution": "internal",
-      "node": "18.18.0",
-      "env": {
-        "NODE_ENV": "production"
-      },
       "android": {
-        "gradleCommand": ":app:assembleRelease",
         "buildType": "apk",
-        "withoutCredentials": true
+        "gradleCommand": ":app:assembleRelease"
       },
-      "cache": {
-        "disabled": false,
-        "customPaths": ["node_modules"]
-      },
-      "prebuildCommand": "rm -f pnpm-lock.yaml"
+      "env": {
+        "EXPO_NO_CAPABILITY_SYNC": "1"
+      }
     },
     "production": {
-      "node": "18.18.0",
       "android": {
-        "gradleCommand": ":app:assembleRelease",
         "buildType": "apk"
       }
     }
-  },
-  "submit": {
-    "production": {}
   }
 }

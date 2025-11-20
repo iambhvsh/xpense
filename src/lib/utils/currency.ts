@@ -1,5 +1,5 @@
 export const getCurrencySymbol = (): string => {
-  const currency = localStorage.getItem('wallet-currency') || 'USD';
+  const currency = localStorage.getItem('xpense-currency') || 'USD';
   
   const symbols: Record<string, string> = {
     'USD': '$',
@@ -28,7 +28,7 @@ export const formatCurrency = (amount: number): string => {
 };
 
 export const formatDate = (dateString: string): string => {
-  const format = localStorage.getItem('wallet-date-format') || 'MM/DD/YYYY';
+  const format = localStorage.getItem('xpense-date-format') || 'MM/DD/YYYY';
   const date = new Date(dateString);
   
   const day = date.getDate().toString().padStart(2, '0');
