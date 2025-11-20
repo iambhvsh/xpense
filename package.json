@@ -9,8 +9,7 @@
     "preview": "vite preview",
     "cap:sync": "npm run build && cap sync",
     "cap:open": "cap open android",
-    "android": "npm run cap:sync && cap open android",
-    "build:android": "eas build --platform android --profile preview"
+    "android": "npm run cap:sync && cap open android"
   },
   "dependencies": {
     "@capacitor/android": "^7.4.4",
