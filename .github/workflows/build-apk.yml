@@ -117,7 +117,7 @@ jobs:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
-          KEYSTORE_PATH="android/app/xpense-release.keystore"
+          KEYSTORE_PATH="android/app/release.keystore"
           
           # Check if keystore exists in secrets
           if [ -n "$KEYSTORE_BASE64" ]; then
@@ -138,40 +138,12 @@ jobs:
             exit 1
           fi
 
-      - name: Configure Signing in build.gradle
-        env:
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        run: |
-          # Verify secrets are available
-          if [ -z "$KEYSTORE_PASSWORD" ] || [ -z "$KEY_PASSWORD" ]; then
-            echo "❌ KEYSTORE_PASSWORD or KEY_PASSWORD secrets not found!"
-            exit 1
-          fi
-          
-          echo "✅ Signing secrets verified"
-          
-          cat >> android/app/build.gradle << 'EOF'
-          
-          android.signingConfigs {
-              release {
-                  storeFile file('xpense-release.keystore')
-                  storePassword System.getenv('KEYSTORE_PASSWORD')
-                  keyAlias 'xpense'
-                  keyPassword System.getenv('KEY_PASSWORD')
-              }
-          }
-          
-          android.buildTypes.release.signingConfig android.signingConfigs.release
-          EOF
-          
-          echo "✅ Signing configuration added to build.gradle"
-
       - name: Build Release APK (optimized)
         working-directory: android
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
         run: |
           echo "🔨 Building release APK..."
           ./gradlew assembleRelease --no-daemon --parallel --build-cache --configuration-cache
