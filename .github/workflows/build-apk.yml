@@ -21,6 +21,7 @@ jobs:
       # ═══════════════════════════════════════════════════════════
       # 📥 CHECKOUT & SETUP
       # ═══════════════════════════════════════════════════════════
+      
       - name: 📥 Checkout repository
         uses: actions/checkout@v4
         with:
@@ -42,6 +43,7 @@ jobs:
       # ═══════════════════════════════════════════════════════════
       # 📦 INSTALL DEPENDENCIES
       # ═══════════════════════════════════════════════════════════
+
       - name: 📦 Install dependencies
         run: |
           echo "📦 Installing npm dependencies..."
@@ -51,6 +53,7 @@ jobs:
       # ═══════════════════════════════════════════════════════════
       # 🏗️ BUILD WEB ASSETS
       # ═══════════════════════════════════════════════════════════
+
       - name: 🏗️ Build web assets
         run: |
           echo "🏗️ Building production assets with Vite..."
@@ -68,13 +71,16 @@ jobs:
       # ═══════════════════════════════════════════════════════════
       # 📱 SETUP CAPACITOR ANDROID
       # ═══════════════════════════════════════════════════════════
+
       - name: 📱 Setup Android platform
         run: |
           echo "📱 Setting up Capacitor Android platform..."
+          
           if [ -d "android" ]; then
             echo "🗑️ Cleaning existing Android platform..."
             rm -rf android
           fi
+          
           echo "➕ Adding Android platform..."
           npx cap add android
           echo "✅ Android platform added"
@@ -94,10 +100,17 @@ jobs:
       - name: 🔐 Configure Android permissions
         run: |
           MANIFEST_PATH="android/app/src/main/AndroidManifest.xml"
+          
           echo "🔐 Adding Android permissions to manifest..."
           
           if ! grep -q "READ_MEDIA_IMAGES" "$MANIFEST_PATH"; then
-            sed -i '/<\/manifest>/i \    <!-- Camera & Storage Permissions -->\n    <uses-permission android:name="android.permission.CAMERA" />\n    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />\n    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />\n    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />' "$MANIFEST_PATH"
+            sed -i '/<\/manifest>/i \
+            \    <!-- Camera & Storage Permissions -->\
+            \    <uses-permission android:name="android.permission.CAMERA" />\
+            \    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />\
+            \    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />\
+            \    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />\
+            ' "$MANIFEST_PATH"
             echo "✅ Permissions added successfully"
           else
             echo "✅ Permissions already exist"
@@ -106,6 +119,7 @@ jobs:
       # ═══════════════════════════════════════════════════════════
       # 🔐 KEYSTORE SETUP (SECURE)
       # ═══════════════════════════════════════════════════════════
+
       - name: 🔐 Setup signing keystore
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
@@ -114,6 +128,7 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
           KEYSTORE_PATH="android/app/release.keystore"
+          
           echo "🔐 Setting up release keystore..."
           
           # Check if all required secrets are present
@@ -145,13 +160,14 @@ jobs:
           echo "✅ Keystore configured successfully"
           ls -lh "$KEYSTORE_PATH"
 
-      - name: � C onfigure Gradle signing
+      - name: 📝 Configure Gradle signing
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
           BUILD_GRADLE="android/app/build.gradle"
+          
           echo "📝 Configuring release signing in build.gradle..."
           
           # Check if signing config already exists
@@ -159,33 +175,36 @@ jobs:
             echo "✅ Signing configuration already exists"
           else
             echo "➕ Adding signing configuration..."
+            
             # Append signing configuration
             cat >> "$BUILD_GRADLE" << 'EOF'
-          
-          android {
-              signingConfigs {
-                  release {
-                      storeFile file('release.keystore')
-                      storePassword System.getenv('SIGNING_STORE_PASSWORD')
-                      keyAlias System.getenv('SIGNING_KEY_ALIAS')
-                      keyPassword System.getenv('SIGNING_KEY_PASSWORD')
-                  }
-              }
-              buildTypes {
-                  release {
-                      signingConfig signingConfigs.release
-                      minifyEnabled false
-                      shrinkResources false
-                  }
-              }
-          }
-          EOF
+
+android {
+    signingConfigs {
+        release {
+            storeFile file('release.keystore')
+            storePassword System.getenv('SIGNING_STORE_PASSWORD')
+            keyAlias System.getenv('SIGNING_KEY_ALIAS')
+            keyPassword System.getenv('SIGNING_KEY_PASSWORD')
+        }
+    }
+    
+    buildTypes {
+        release {
+            signingConfig signingConfigs.release
+            minifyEnabled false
+            shrinkResources false
+        }
+    }
+}
+EOF
             echo "✅ Signing configuration added"
           fi
 
       # ═══════════════════════════════════════════════════════════
       # 🏗️ BUILD RELEASE APK
       # ═══════════════════════════════════════════════════════════
+
       - name: 🔧 Setup Gradle
         run: |
           echo "🔧 Configuring Gradle wrapper..."
@@ -201,20 +220,24 @@ jobs:
         run: |
           echo "🏗️ Building signed release APK..."
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          
           ./gradlew assembleRelease \
             --no-daemon \
             --stacktrace \
             -Porg.gradle.parallel=true \
             -Porg.gradle.caching=true
+          
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
           echo "✅ APK build completed successfully"
 
       # ═══════════════════════════════════════════════════════════
       # ✅ VERIFY & PACKAGE
       # ═══════════════════════════════════════════════════════════
+
       - name: ✅ Verify APK signature
         run: |
           APK_PATH="android/app/build/outputs/apk/release/app-release.apk"
+          
           echo "✅ Verifying APK..."
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
           
@@ -240,6 +263,7 @@ jobs:
           else
             echo "⚠️ apksigner not available, skipping signature verification"
           fi
+          
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
       - name: 📦 Rename APK with version
@@ -273,6 +297,7 @@ jobs:
       # ═══════════════════════════════════════════════════════════
       # 📊 BUILD SUMMARY
       # ═══════════════════════════════════════════════════════════
+
       - name: 📊 Build summary
         if: success()
         run: |
