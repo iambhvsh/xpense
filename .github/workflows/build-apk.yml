@@ -96,6 +96,17 @@ jobs:
           npx cap sync android
           echo "✅ Capacitor sync completed"
 
+      - name: 🧹 Remove duplicate uncompressed assets
+        run: |
+          echo "🧹 Removing uncompressed files (keeping .gz versions only)..."
+          find android/app/src/main/assets/public/ -type f -name "*.gz" | while read gz_file; do
+            original_file="${gz_file%.gz}"
+            if [ -f "$original_file" ]; then
+              rm -v "$original_file"
+            fi
+          done
+          echo "✅ Cleaned up uncompressed duplicates"
+
       - name: 🔐 Configure Android permissions
         run: |
           MANIFEST_PATH="android/app/src/main/AndroidManifest.xml"
