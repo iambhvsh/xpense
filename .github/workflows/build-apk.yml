@@ -46,7 +46,7 @@ jobs:
       - name: 📦 Install dependencies
         run: |
           echo "📦 Installing npm dependencies..."
-          npm ci --prefer-offline --no-audit
+          npm ci --prefer-offline --no-audit --loglevel=error
           echo "✅ Dependencies installed successfully"
 
       # ═══════════════════════════════════════════════════════════
@@ -201,26 +201,22 @@ jobs:
             echo "✅ Signing configuration already exists"
           else
             echo "➕ Adding signing configuration..."
-            cat >> "$BUILD_GRADLE" << 'GRADLE_EOF'
-          
-          android {
-              signingConfigs {
-                  release {
-                      storeFile file('release.keystore')
-                      storePassword System.getenv('SIGNING_STORE_PASSWORD')
-                      keyAlias System.getenv('SIGNING_KEY_ALIAS')
-                      keyPassword System.getenv('SIGNING_KEY_PASSWORD')
-                  }
-              }
-              buildTypes {
-                  release {
-                      signingConfig signingConfigs.release
-                      minifyEnabled false
-                      shrinkResources false
-                  }
-              }
-          }
-          GRADLE_EOF
+            
+            # Find the android block and add signing config
+            sed -i '/android {/a\
+            \    signingConfigs {\
+            \        release {\
+            \            storeFile file("release.keystore")\
+            \            storePassword System.getenv("SIGNING_STORE_PASSWORD")\
+            \            keyAlias System.getenv("SIGNING_KEY_ALIAS")\
+            \            keyPassword System.getenv("SIGNING_KEY_PASSWORD")\
+            \        }\
+            \    }' "$BUILD_GRADLE"
+            
+            # Update buildTypes release to use signing config
+            sed -i '/buildTypes {/,/release {/a\
+            \            signingConfig signingConfigs.release' "$BUILD_GRADLE"
+            
             echo "✅ Signing configuration added"
           fi
 
@@ -282,12 +278,16 @@ jobs:
           echo "   Size: $(du -h $APK_PATH | cut -f1)"
           echo ""
           
-          # Verify APK signature
+          # Verify APK signature with jarsigner
           echo "🔍 Verifying APK signature..."
-          if command -v apksigner >/dev/null 2>&1; then
-            apksigner verify "$APK_PATH" && echo "✅ APK signature valid" || echo "⚠️ Could not verify signature"
+          if jarsigner -verify -verbose -certs "$APK_PATH" 2>&1 | grep -q "jar verified"; then
+            echo "✅ APK is properly signed!"
+            echo ""
+            echo "📝 Signature details:"
+            jarsigner -verify -verbose -certs "$APK_PATH" 2>&1 | grep -A 5 "Signer"
           else
-            echo "⚠️ apksigner not available, skipping signature verification"
+            echo "⚠️ WARNING: APK may not be signed properly!"
+            jarsigner -verify -verbose "$APK_PATH" || true
           fi
           
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
