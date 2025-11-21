@@ -120,34 +120,27 @@ jobs:
       # 🔐 KEYSTORE SETUP (SECURE)
       # ═══════════════════════════════════════════════════════════
 
-      - name: 🔐 Setup signing keystore
+      - name: 🔐 Check secrets availability
+        id: check-secrets
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "has_keystore=false" >> $GITHUB_OUTPUT
+            echo "⚠️ Keystore secret not found"
+          else
+            echo "has_keystore=true" >> $GITHUB_OUTPUT
+            echo "✅ Keystore secret available"
+          fi
+
+      - name: 🔐 Setup signing keystore
+        if: steps.check-secrets.outputs.has_keystore == 'true'
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
         run: |
           KEYSTORE_PATH="android/app/release.keystore"
           
           echo "🔐 Setting up release keystore..."
-          
-          # Check if all required secrets are present
-          if [ -z "$KEYSTORE_BASE64" ]; then
-            echo "❌ ERROR: KEYSTORE_BASE64 secret is not set!"
-            echo "📝 Please add the following secrets to your GitHub repository:"
-            echo "   - KEYSTORE_BASE64: Your keystore file encoded in base64"
-            echo "   - KEYSTORE_PASSWORD: Your keystore password"
-            echo "   - KEY_ALIAS: Your key alias"
-            echo "   - KEY_PASSWORD: Your key password"
-            echo ""
-            echo "📝 To generate keystore:"
-            echo "   keytool -genkey -v -keystore release.keystore -alias xpense \\"
-            echo "           -keyalg RSA -keysize 4096 -validity 10000"
-            echo ""
-            echo "📝 To encode keystore to base64:"
-            echo "   base64 release.keystore | tr -d '\\n'"
-            exit 1
-          fi
           
           # Decode and save keystore
           echo "$KEYSTORE_BASE64" | base64 -d > "$KEYSTORE_PATH"
@@ -160,11 +153,41 @@ jobs:
           echo "✅ Keystore configured successfully"
           ls -lh "$KEYSTORE_PATH"
 
+      - name: ❌ Missing keystore error
+        if: steps.check-secrets.outputs.has_keystore == 'false'
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "❌ ERROR: Required secrets are missing!"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo ""
+          echo "📝 Please add the following secrets to your GitHub repository:"
+          echo "   Settings → Secrets and variables → Actions → New repository secret"
+          echo ""
+          echo "Required secrets:"
+          echo "   • KEYSTORE_BASE64    - Your keystore file encoded in base64"
+          echo "   • KEYSTORE_PASSWORD  - Your keystore password"
+          echo "   • KEY_ALIAS          - Your key alias (e.g., 'xpense')"
+          echo "   • KEY_PASSWORD       - Your key password"
+          echo ""
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "📝 How to generate and encode keystore:"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo ""
+          echo "1. Generate keystore:"
+          echo "   keytool -genkey -v -keystore release.keystore \\"
+          echo "           -alias xpense -keyalg RSA -keysize 4096 \\"
+          echo "           -validity 10000"
+          echo ""
+          echo "2. Encode to base64:"
+          echo "   base64 release.keystore | tr -d '\n'"
+          echo ""
+          echo "3. Copy the output and add as KEYSTORE_BASE64 secret"
+          echo ""
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          exit 1
+
       - name: 📝 Configure Gradle signing
-        env:
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        if: steps.check-secrets.outputs.has_keystore == 'true'
         run: |
           BUILD_GRADLE="android/app/build.gradle"
           
@@ -206,12 +229,14 @@ EOF
       # ═══════════════════════════════════════════════════════════
 
       - name: 🔧 Setup Gradle
+        if: steps.check-secrets.outputs.has_keystore == 'true'
         run: |
           echo "🔧 Configuring Gradle wrapper..."
           chmod +x android/gradlew
           echo "✅ Gradle ready"
 
       - name: 🏗️ Build signed release APK
+        if: steps.check-secrets.outputs.has_keystore == 'true'
         working-directory: android
         env:
           SIGNING_STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
@@ -235,6 +260,7 @@ EOF
       # ═══════════════════════════════════════════════════════════
 
       - name: ✅ Verify APK signature
+        if: steps.check-secrets.outputs.has_keystore == 'true'
         run: |
           APK_PATH="android/app/build/outputs/apk/release/app-release.apk"
           
@@ -267,6 +293,7 @@ EOF
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
       - name: 📦 Rename APK with version
+        if: steps.check-secrets.outputs.has_keystore == 'true'
         run: |
           APK_PATH="android/app/build/outputs/apk/release/app-release.apk"
           VERSION=$(date +%Y%m%d-%H%M%S)
@@ -277,6 +304,7 @@ EOF
           echo "📦 Created: Xpense-v${VERSION}-${COMMIT_SHORT}.apk"
 
       - name: 📤 Upload release APK
+        if: steps.check-secrets.outputs.has_keystore == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: xpense-apk-${{ github.sha }}
