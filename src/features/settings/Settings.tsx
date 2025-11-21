@@ -1,5 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronRight, Trash2, Download, Upload, Wallet, Database, Info, DollarSign, Calendar, Shield, HelpCircle, Key } from 'lucide-react';
+import { ChevronRight, Trash2, Download, Upload, Database, Info, DollarSign, Calendar, Shield, HelpCircle, Key } from 'lucide-react';
+import { useDatabaseStats, useSetting } from '@/lib/hooks/useDatabase';
+import { dbHelpers } from '@/lib/db';
+import { updateCurrencyCache, updateDateFormatCache } from '@/lib/utils/currency';
+import { updateApiKeyCache } from '@/lib/services/gemini';
+import { CategoryManager } from '@/components/settings/CategoryManager';
+import { useAlert } from '@/components/context/AlertProvider';
+import { AlertModal } from '@/components/ui/AlertModal';
+import appIcon from '../../../assets/icon.png';
 
 interface SettingsProps {
   onClearData: () => void;
@@ -27,8 +35,13 @@ const DATE_FORMATS = [
 ];
 
 export const Settings: React.FC<SettingsProps> = ({ onClearData }) => {
-  const [storageSize, setStorageSize] = useState<string>('0 KB');
-  const [transactionCount, setTransactionCount] = useState<number>(0);
+  // Use database hooks
+  const { transactionCount, storageSize } = useDatabaseStats();
+  const { value: selectedCurrency, updateSetting: updateCurrency } = useSetting('xpense-currency', 'USD');
+  const { value: selectedDateFormat, updateSetting: updateDateFormat } = useSetting('xpense-date-format', 'MM/DD/YYYY');
+  const { value: apiKey, updateSetting: updateApiKey } = useSetting<string>('xpense-api-key', '');
+  
+  const showAlert = useAlert();
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [exportSuccess, setExportSuccess] = useState(false);
   const [showCurrencyPicker, setShowCurrencyPicker] = useState(false);
@@ -41,13 +54,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClearData }) => {
   const [isClosingPrivacyPolicy, setIsClosingPrivacyPolicy] = useState(false);
   const [showApiKeyModal, setShowApiKeyModal] = useState(false);
   const [apiKeyInput, setApiKeyInput] = useState('');
-  const [hasApiKey, setHasApiKey] = useState(false);
-  const [selectedCurrency, setSelectedCurrency] = useState(() => {
-    return localStorage.getItem('xpense-currency') || 'USD';
-  });
-  const [selectedDateFormat, setSelectedDateFormat] = useState(() => {
-    return localStorage.getItem('xpense-date-format') || 'MM/DD/YYYY';
-  });
+  const hasApiKey = !!apiKey;
   
   // Animation locks to prevent rapid clicking issues
   const currencyAnimationRef = useRef<NodeJS.Timeout | null>(null);
@@ -60,23 +67,13 @@ export const Settings: React.FC<SettingsProps> = ({ onClearData }) => {
   const [isAnimatingPrivacyPolicy, setIsAnimatingPrivacyPolicy] = useState(false);
 
   useEffect(() => {
-    const data = localStorage.getItem('xpense-expenses');
-    if (data) {
-      const bytes = new Blob([data]).size;
-      const kb = (bytes / 1024).toFixed(2);
-      setStorageSize(`${kb} KB`);
-      
-      try {
-        const transactions = JSON.parse(data);
-        setTransactionCount(transactions.length);
-      } catch {
-        setTransactionCount(0);
-      }
+    // Load API key into input when modal opens
+    if (showApiKeyModal && apiKey) {
+      setApiKeyInput(apiKey);
     }
+  }, [showApiKeyModal, apiKey]);
 
-    const apiKey = localStorage.getItem('xpense-api-key');
-    setHasApiKey(!!apiKey);
-    
+  useEffect(() => {
     // Cleanup all animation timeouts on unmount
     return () => {
       if (currencyAnimationRef.current) clearTimeout(currencyAnimationRef.current);
@@ -86,38 +83,58 @@ export const Settings: React.FC<SettingsProps> = ({ onClearData }) => {
     };
   }, []);
 
-  const handleExportData = () => {
-    const data = localStorage.getItem('xpense-expenses');
-    if (data) {
-      const blob = new Blob([data], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `xpense-backup-${new Date().toISOString().split('T')[0]}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
+  const handleExportData = async () => {
+    try {
+      const csvContent = await dbHelpers.exportToCSV();
+      const { downloadCSV } = await import('@/lib/utils/csv');
+      const filename = `xpense-transactions-${new Date().toISOString().split('T')[0]}.csv`;
+      downloadCSV(csvContent, filename);
       
       setExportSuccess(true);
       setTimeout(() => setExportSuccess(false), 2000);
+    } catch (error) {
+      console.error('Export failed:', error);
+      showAlert({
+        title: 'Export Failed',
+        message: 'Failed to export data. Please try again.'
+      });
     }
   };
 
   const handleImportData = () => {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = 'application/json';
-    input.onchange = (e) => {
+    input.accept = '.csv,text/csv';
+    input.onchange = async (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (file) {
         const reader = new FileReader();
-        reader.onload = (event) => {
+        reader.onload = async (event) => {
           try {
-            const data = event.target?.result as string;
-            JSON.parse(data);
-            localStorage.setItem('xpense-expenses', data);
-            window.location.reload();
+            const csvContent = event.target?.result as string;
+            const result = await dbHelpers.importFromCSV(csvContent);
+            
+            let message = `Imported ${result.imported} transactions`;
+            
+            if (result.newCategories.length > 0) {
+              message += `\n\nCreated ${result.newCategories.length} new categories: ${result.newCategories.join(', ')}`;
+            }
+            
+            if (result.errors > 0) {
+              message += `\n\nSkipped ${result.errors} rows with errors`;
+            }
+            
+            showAlert({
+              title: 'Import Complete',
+              message
+            });
           } catch (error) {
-            alert('Invalid backup file. Please select a valid xpense backup.');
+            console.error('Import failed:', error);
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            showAlert({
+              title: 'Import Failed',
+              message: errorMessage
+            });
           }
         };
         reader.readAsText(file);
@@ -169,25 +186,25 @@ export const Settings: React.FC<SettingsProps> = ({ onClearData }) => {
     }, 250);
   };
 
-  const handleCurrencySelect = (code: string) => {
-    setSelectedCurrency(code);
-    localStorage.setItem('xpense-currency', code);
+  const handleCurrencySelect = async (code: string) => {
+    await updateCurrency(code);
+    updateCurrencyCache(code);
     handleCloseCurrencyPicker();
   };
 
-  const handleDateFormatSelect = (format: string) => {
-    setSelectedDateFormat(format);
-    localStorage.setItem('xpense-date-format', format);
+  const handleDateFormatSelect = async (format: string) => {
+    await updateDateFormat(format);
+    updateDateFormatCache(format);
     handleCloseDateFormatPicker();
   };
 
   const getCurrencyDisplay = () => {
-    const currency = CURRENCIES.find(c => c.code === selectedCurrency);
+    const currency = CURRENCIES.find(c => c.code === (selectedCurrency || 'USD'));
     return currency ? `${currency.code}` : 'USD';
   };
 
   const getDateFormatDisplay = () => {
-    const format = DATE_FORMATS.find(f => f.id === selectedDateFormat);
+    const format = DATE_FORMATS.find(f => f.id === (selectedDateFormat || 'MM/DD/YYYY'));
     return format ? format.label : 'MM/DD/YYYY';
   };
 
@@ -226,23 +243,22 @@ export const Settings: React.FC<SettingsProps> = ({ onClearData }) => {
   };
 
   const handleOpenApiKeyModal = () => {
-    const existingKey = localStorage.getItem('xpense-api-key');
-    setApiKeyInput(existingKey || '');
+    setApiKeyInput(apiKey || '');
     setShowApiKeyModal(true);
   };
 
-  const handleSaveApiKey = () => {
+  const handleSaveApiKey = async () => {
     if (apiKeyInput.trim()) {
-      localStorage.setItem('xpense-api-key', apiKeyInput.trim());
-      setHasApiKey(true);
+      await updateApiKey(apiKeyInput.trim());
+      updateApiKeyCache(apiKeyInput.trim());
       setShowApiKeyModal(false);
       setApiKeyInput('');
     }
   };
 
-  const handleRemoveApiKey = () => {
-    localStorage.removeItem('xpense-api-key');
-    setHasApiKey(false);
+  const handleRemoveApiKey = async () => {
+    await dbHelpers.deleteSetting('xpense-api-key');
+    updateApiKeyCache('');
     setApiKeyInput('');
     setShowApiKeyModal(false);
   };
@@ -256,7 +272,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClearData }) => {
             <div className="px-4 py-4">
               <div className="flex items-center gap-3 mb-3">
                 <img 
-                  src="/assets/icon.png" 
+                  src={appIcon} 
                   alt="xpense logo" 
                   className="w-[60px] h-[60px] rounded-[14px] flex-shrink-0 shadow-lg gpu-accelerated" 
                   style={{ transform: 'translateZ(0)' }}
@@ -267,7 +283,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClearData }) => {
                 </div>
               </div>
               <p className="text-[13px] text-[#8E8E93] tracking-[-0.08px] leading-[18px]">
-                A personal expense tracker designed to help you manage your finances with ease. All your data is stored locally on your device for maximum privacy and security.
+                A personal expense tracker designed to help you manage your finances with ease. We do not store or share your data—everything is kept locally on your device. Only AI features you use will share necessary data with Gemini for processing.
               </p>
             </div>
           </div>
@@ -307,8 +323,8 @@ export const Settings: React.FC<SettingsProps> = ({ onClearData }) => {
                 <Download size={16} strokeWidth={2.5} className="text-white" />
               </div>
               <div className="flex-1 text-left">
-                <div className="text-[17px] text-white md:text-[#000000] tracking-[-0.41px]">Export Backup</div>
-                <div className="text-[13px] text-[#8E8E93] tracking-[-0.08px] mt-0.5">Save your data as JSON</div>
+                <div className="text-[17px] text-white md:text-[#000000] tracking-[-0.41px]">Export to CSV</div>
+                <div className="text-[13px] text-[#8E8E93] tracking-[-0.08px] mt-0.5">Download transactions as CSV</div>
               </div>
               {exportSuccess ? (
                 <span className="text-[15px] text-[#34C759] font-semibold tracking-[-0.41px]">✓ Saved</span>
@@ -327,8 +343,8 @@ export const Settings: React.FC<SettingsProps> = ({ onClearData }) => {
                 <Upload size={16} strokeWidth={2.5} className="text-white" />
               </div>
               <div className="flex-1 text-left">
-                <div className="text-[17px] text-white md:text-[#000000] tracking-[-0.41px]">Import Backup</div>
-                <div className="text-[13px] text-[#8E8E93] tracking-[-0.08px] mt-0.5">Restore from JSON file</div>
+                <div className="text-[17px] text-white md:text-[#000000] tracking-[-0.41px]">Import from CSV</div>
+                <div className="text-[13px] text-[#8E8E93] tracking-[-0.08px] mt-0.5">Upload CSV file to import</div>
               </div>
               <ChevronRight size={20} strokeWidth={2} className="text-[#C7C7CC] md:text-[#C7C7CC]" />
             </button>
@@ -412,6 +428,14 @@ export const Settings: React.FC<SettingsProps> = ({ onClearData }) => {
           </div>
         </div>
 
+        {/* Categories */}
+        <div>
+          <div className="px-4 pb-2">
+            <p className="text-[13px] font-semibold text-[#8E8E93] tracking-[-0.08px] uppercase">Categories</p>
+          </div>
+          <CategoryManager />
+        </div>
+
         {/* About */}
         <div>
           <div className="px-4 pb-2">
@@ -474,34 +498,23 @@ export const Settings: React.FC<SettingsProps> = ({ onClearData }) => {
         </div>
       </div>
 
-      {/* Clear Data Confirmation Modal */}
-      {showClearConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 gpu-accelerated">
-          <div 
-            className="absolute inset-0 bg-black/60 animate-fade-in backdrop-blur-sm gpu-accelerated"
-            onClick={() => setShowClearConfirm(false)}
-            style={{ animationDuration: '0.3s', transform: 'translateZ(0)', willChange: 'opacity' }}
-          />
-          <div className="relative bg-[#1C1C1E] md:bg-white rounded-[14px] w-full max-w-[270px] overflow-hidden animate-scale-in shadow-2xl gpu-accelerated" style={{ transform: 'translateZ(0)', willChange: 'transform, opacity' }}>
-            <div className="px-4 pt-5 pb-4 text-center">
-              <h3 className="text-[17px] font-semibold text-white md:text-[#000000] tracking-[-0.41px] mb-2">Clear All Data?</h3>
-              <p className="text-[13px] text-[#8E8E93] tracking-[-0.08px] leading-[18px]">
-                This will permanently delete all {transactionCount} transactions. This action cannot be undone.
-              </p>
-            </div>
-            <div className="border-t border-[#38383A] md:border-[#C6C6C8]">
-              <button onClick={confirmClearData} className="w-full py-3 text-[17px] font-semibold text-[#FF3B30] tracking-[-0.41px] active:bg-[#2C2C2E] md:active:bg-[#E5E5EA] transition-colors">
-                Clear Data
-              </button>
-            </div>
-            <div className="border-t border-[#38383A] md:border-[#C6C6C8]">
-              <button onClick={() => setShowClearConfirm(false)} className="w-full py-3 text-[17px] font-semibold text-[#007AFF] tracking-[-0.41px] active:bg-[#2C2C2E] md:active:bg-[#E5E5EA] transition-colors">
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <AlertModal
+        open={showClearConfirm}
+        onClose={() => setShowClearConfirm(false)}
+        title="Clear All Data?"
+        message={`This will permanently delete all ${transactionCount} transactions. This action cannot be undone.`}
+        actions={[
+          {
+            label: 'Clear Data',
+            variant: 'danger',
+            onPress: confirmClearData
+          },
+          {
+            label: 'Cancel',
+            onPress: () => setShowClearConfirm(false)
+          }
+        ]}
+      />
 
       {/* Currency Picker Modal */}
       {showCurrencyPicker && (
@@ -605,8 +618,8 @@ export const Settings: React.FC<SettingsProps> = ({ onClearData }) => {
             <div className="flex-1 overflow-y-auto overscroll-contain gpu-accelerated px-4 py-6 pb-24 md:pb-6 md:bg-white" style={{ background: 'linear-gradient(to bottom, rgba(28, 28, 30, 0.7) 0%, rgba(0, 0, 0, 0.95) 40%, rgba(0, 0, 0, 1) 80%)', transform: 'translateZ(0)' }}>
               <div className="bg-[#2C2C2E] md:bg-[#F5F5F7] rounded-[10px] p-4 space-y-4">
                 <div>
-                  <h4 className="text-[15px] font-semibold text-white md:text-[#000000] tracking-[-0.24px] mb-2">Your Privacy Matters</h4>
-                  <p className="text-[13px] text-[#8E8E93] tracking-[-0.08px] leading-[18px]">xpense does not collect, transmit, or share any of your personal data. All information you enter is stored locally on your device.</p>
+                  <h4 className="text-[15px] font-semibold text-white md:text-[#000000] tracking-[-0.24px] mb-2">Information</h4>
+                  <p className="text-[13px] text-[#8E8E93] tracking-[-0.08px] leading-[18px]">xpense does not store or share your data. All information you enter is stored locally on your device and never transmitted to our servers.</p>
                 </div>
                 <div className="h-[0.5px] bg-[#38383A] md:bg-[#C6C6C8]"></div>
                 <div>
@@ -615,8 +628,19 @@ export const Settings: React.FC<SettingsProps> = ({ onClearData }) => {
                   <ul className="space-y-1.5 text-[13px] text-[#8E8E93] tracking-[-0.08px] leading-[18px]">
                     <li className="flex gap-2"><span className="flex-shrink-0">•</span><span>Data never leaves your device</span></li>
                     <li className="flex gap-2"><span className="flex-shrink-0">•</span><span>No servers or cloud storage</span></li>
-                    <li className="flex gap-2"><span className="flex-shrink-0">•</span><span>You have complete control</span></li>
+                    <li className="flex gap-2"><span className="flex-shrink-0">•</span><span>You have complete control of your data</span></li>
                   </ul>
+                </div>
+                <div className="h-[0.5px] bg-[#38383A] md:bg-[#C6C6C8]"></div>
+                <div>
+                  <h4 className="text-[15px] font-semibold text-white md:text-[#000000] tracking-[-0.24px] mb-2">AI Features</h4>
+                  <p className="text-[13px] text-[#8E8E93] tracking-[-0.08px] leading-[18px] mb-2">When you use AI-powered features (receipt scanning, financial insights, auto-categorization), only the data required for that specific feature is shared with Google's Gemini AI:</p>
+                  <ul className="space-y-1.5 text-[13px] text-[#8E8E93] tracking-[-0.08px] leading-[18px]">
+                    <li className="flex gap-2"><span className="flex-shrink-0">•</span><span>Receipt images for scanning</span></li>
+                    <li className="flex gap-2"><span className="flex-shrink-0">•</span><span>Transaction data for insights</span></li>
+                    <li className="flex gap-2"><span className="flex-shrink-0">•</span><span>Transaction descriptions for categorization</span></li>
+                  </ul>
+                  <p className="text-[13px] text-[#8E8E93] tracking-[-0.08px] leading-[18px] mt-2">This data is processed by Gemini and subject to Google's privacy policy. We do not store or access this data.</p>
                 </div>
               </div>
             </div>

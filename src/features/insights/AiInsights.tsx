@@ -3,7 +3,7 @@ import { marked } from 'marked';
 import { generateInsights } from '@/lib/services/gemini';
 import { Transaction } from '@/lib/types';
 import { Sparkles } from 'lucide-react';
-import { Spinner } from '@/shared/components/Spinner';
+import { Spinner } from '@/components/ui/Spinner';
 
 interface AiInsightsProps {
   transactions: Transaction[];
@@ -121,9 +121,11 @@ export const AiInsights: React.FC<AiInsightsProps> = React.memo(({ transactions 
         </div>
       </div>
       
-      <p className="text-[12px] text-center text-[#8E8E93] px-6 font-medium tracking-[0px] pb-4">
-        Gemini AI suggestions are for informational purposes only.
-      </p>
+      <div className="space-y-2 px-6 pb-4">
+        <p className="text-[11px] text-center text-[#8E8E93] tracking-[0px] leading-[16px]">
+          When you use AI features, your transaction data is shared with Google's Gemini AI for analysis. We do not store or share your data otherwise.
+        </p>
+      </div>
     </div>
   );
 });

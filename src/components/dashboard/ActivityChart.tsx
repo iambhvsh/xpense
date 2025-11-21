@@ -60,9 +60,10 @@ export const ActivityChart: React.FC<ActivityChartProps> = React.memo(({ data, m
                   if (value >= 1000) return `${value / 1000}k`;
                   return value.toString();
                 }}
-                width={32}
-                domain={[0, 1000]}
-                ticks={[0, 250, 500, 750, 1000]}
+                width={40}
+                domain={[0, 'dataMax']}
+                allowDecimals={false}
+                tickCount={5}
               />
               <CartesianGrid 
                 strokeDasharray="3 3" 

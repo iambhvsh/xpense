@@ -1,39 +1,62 @@
 import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import { Transaction } from './lib/types';
-import { INITIAL_TRANSACTIONS } from './lib/constants';
-import { LayoutGrid, Plus, List, Sparkles, Wallet, Settings } from 'lucide-react';
+import { useDatabaseInit } from './lib/hooks/useDatabase';
+import { useTransactions } from './lib/hooks/useDatabase';
+import { transactionRecordToTransaction, transactionToTransactionRecord } from './lib/db/adapters';
+import { dbHelpers, seedDefaultCategories } from './lib/db';
+import { AlertProvider } from './components/context/AlertProvider';
+import { Sidebar } from './components/layout/Sidebar';
+import { BottomTabBar } from './components/layout/BottomTabBar';
+import { PageHeader } from './components/layout/PageHeader';
+import { AddTransactionModal } from './components/layout/AddTransactionModal';
+import { AppTab } from './app/constants/navigation';
 
 // Lazy load features
 const Dashboard = lazy(() => import('./features/dashboard/Dashboard').then(m => ({ default: m.Dashboard })));
 const TransactionForm = lazy(() => import('./features/transactions/TransactionForm').then(m => ({ default: m.TransactionForm })));
 const TransactionList = lazy(() => import('./features/transactions/TransactionList').then(m => ({ default: m.TransactionList })));
+const Budget = lazy(() => import('./features/budget/Budget').then(m => ({ default: m.Budget })));
 const AiInsights = lazy(() => import('./features/insights/AiInsights').then(m => ({ default: m.AiInsights })));
 const SettingsPage = lazy(() => import('./features/settings/Settings').then(m => ({ default: m.Settings })));
 const Onboarding = lazy(() => import('./features/onboarding/Onboarding').then(m => ({ default: m.Onboarding })));
 
 const App: React.FC = () => {
-  const [showOnboarding, setShowOnboarding] = useState(() => {
-    return !localStorage.getItem('xpense-onboarding-complete');
-  });
-
-  const [transactions, setTransactions] = useState<Transaction[]>(() => {
-    try {
-      const saved = localStorage.getItem('xpense-expenses');
-      return saved ? JSON.parse(saved) : INITIAL_TRANSACTIONS;
-    } catch {
-      return INITIAL_TRANSACTIONS;
-    }
-  });
+  // Initialize database
+  const { isInitialized } = useDatabaseInit();
   
-  const [activeTab, setActiveTab] = useState<'overview' | 'history' | 'insights' | 'settings'>('overview');
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  
+  // Get transactions from IndexedDB with live updates
+  const { 
+    transactions: dbTransactions, 
+    addTransaction: addDbTransaction,
+    deleteTransaction: deleteDbTransaction,
+    isLoading: transactionsLoading
+  } = useTransactions();
+
+  // Convert database records to Transaction format for compatibility
+  const transactions = dbTransactions.map(transactionRecordToTransaction);
+  
+  const [activeTab, setActiveTab] = useState<AppTab>('overview');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
   const animationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Check onboarding status and initialize caches from database
   useEffect(() => {
-    localStorage.setItem('xpense-expenses', JSON.stringify(transactions));
-  }, [transactions]);
+    if (isInitialized) {
+      // Initialize currency cache
+      import('./lib/utils/currency').then(({ initializeCurrencyCache }) => {
+        initializeCurrencyCache();
+      });
+      
+      // Check onboarding status
+      dbHelpers.getSetting('xpense-onboarding-complete').then(completed => {
+        setShowOnboarding(!completed);
+      });
+    }
+  }, [isInitialized]);
 
   useEffect(() => {
     // Cleanup timeout on unmount
@@ -44,21 +67,19 @@ const App: React.FC = () => {
     };
   }, []);
 
-  const addTransaction = useCallback((t: Omit<Transaction, 'id'>) => {
-    const newTransaction = { ...t, id: crypto.randomUUID() };
-    setTransactions(prev => [newTransaction, ...prev]);
-  }, []);
+  const addTransaction = useCallback(async (t: Omit<Transaction, 'id'>) => {
+    const record = transactionToTransactionRecord(t);
+    await addDbTransaction(record);
+  }, [addDbTransaction]);
 
-  const deleteTransaction = useCallback((id: string) => {
-    setTransactions(prev => prev.filter(t => t.id !== id));
-  }, []);
+  const deleteTransaction = useCallback(async (id: string) => {
+    await deleteDbTransaction(parseInt(id));
+  }, [deleteDbTransaction]);
 
-  const handleClearData = useCallback(() => {
-    if (window.confirm('Are you sure you want to clear all data? This action cannot be undone.')) {
-      localStorage.removeItem('xpense-expenses');
-      setTransactions(INITIAL_TRANSACTIONS);
-      setActiveTab('overview');
-    }
+  const handleClearData = useCallback(async () => {
+    await dbHelpers.clearAllData();
+    await seedDefaultCategories();
+    setActiveTab('overview');
   }, []);
 
   const handleOpenModal = useCallback(() => {
@@ -105,126 +126,53 @@ const App: React.FC = () => {
     });
   }, [isAnimating]);
 
-  const TabItem = useCallback(({ id, icon: Icon, label }: { id: typeof activeTab, icon: any, label: string }) => (
-    <button
-      onClick={() => setActiveTab(id)}
-      className="flex flex-col items-center justify-center w-full h-full transition-none touch-manipulation"
-      style={{ WebkitTapHighlightColor: 'transparent' }}
-    >
-      <Icon 
-        size={26} 
-        strokeWidth={activeTab === id ? 2.5 : 2} 
-        className={`transition-colors duration-150 mb-[2px] ${activeTab === id ? 'text-ios-blue' : 'text-[#8E8E93]'}`} 
-      />
-      <span className={`text-[10px] font-medium tracking-[-0.08px] transition-colors duration-150 ${activeTab === id ? 'text-ios-blue' : 'text-[#8E8E93]'}`}>
-        {label}
-      </span>
-    </button>
-  ), [activeTab]);
-
-  const SidebarItem = useCallback(({ id, icon: Icon, label }: { id: typeof activeTab, icon: any, label: string }) => (
-    <button
-      onClick={() => setActiveTab(id)}
-      className={`flex items-center gap-3 px-3 py-2 rounded-[8px] transition-colors w-full text-left contain-layout ${
-        activeTab === id 
-          ? 'bg-[#E5E5EA] text-[#1D1D1F]' 
-          : 'text-[#3C3C43] hover:bg-[#E5E5EA]/50 active:bg-[#E5E5EA]'
-      }`}
-    >
-      <Icon size={20} strokeWidth={2} className={activeTab === id ? 'text-ios-blue' : 'text-[#8E8E93]'} />
-      <span className="text-[15px] font-medium tracking-[-0.24px]">{label}</span>
-    </button>
-  ), [activeTab]);
-
-  // Show onboarding if first time
-  if (showOnboarding) {
-    return (
-      <Suspense fallback={
-        <div className="fixed inset-0 bg-black flex items-center justify-center">
-          <div className="w-8 h-8 border-3 border-white border-t-transparent rounded-full animate-spin" />
-        </div>
-      }>
-        <Onboarding onComplete={() => setShowOnboarding(false)} />
-      </Suspense>
-    );
-  }
-
-  return (
-    <div 
-      className="fixed inset-0 flex overflow-hidden" 
+  // Show loading during initialization
+  const renderContent = () => (
+    <div
+      className="fixed inset-0 flex overflow-hidden"
       data-modal-open={isAddModalOpen && !isClosing}
-      style={{ 
-        backgroundColor: isAddModalOpen && !isClosing ? '#1A1A1A' : '#000000', 
-        transition: 'background-color 0.25s ease-out' 
+      style={{
+        backgroundColor: isAddModalOpen && !isClosing ? '#1A1A1A' : '#000000',
+        transition: 'background-color 0.25s ease-out'
       }}
     >
-      
-      {/* macOS Sidebar */}
-      <aside 
-        className="hidden md:flex flex-col w-64 bg-[#F5F5F7] h-full border-r border-[#D1D1D6] page-scalable"
-        data-scaled={isAddModalOpen && !isClosing}
-      >
-        <div className="p-5">
-          <div className="flex items-center gap-3 mb-8 mt-2">
-            <div className="bg-gradient-to-br from-ios-blue to-ios-indigo p-2.5 rounded-[14px] shadow-sm">
-              <Wallet className="text-white" size={22} strokeWidth={2.5} />
-            </div>
-            <h1 className="text-[28px] font-bold text-[#1D1D1F] tracking-tight">Wallet</h1>
-          </div>
+      <Sidebar
+        activeTab={activeTab}
+        onSelectTab={setActiveTab}
+        onAddTransaction={handleOpenModal}
+        dimmed={isAddModalOpen && !isClosing}
+      />
 
-          <nav className="space-y-1">
-            <SidebarItem id="overview" icon={LayoutGrid} label="Overview" />
-            <SidebarItem id="history" icon={List} label="Transactions" />
-            <SidebarItem id="insights" icon={Sparkles} label="For You" />
-          </nav>
-        </div>
-
-        <div className="mt-auto p-5">
-          <button 
-            onClick={handleOpenModal}
-            className="w-full bg-ios-blue hover:bg-[#0051D5] active:bg-[#004FC7] text-white py-3.5 rounded-[14px] font-semibold transition-colors flex items-center justify-center gap-2 text-[17px] shadow-sm"
-          >
-            <Plus size={20} strokeWidth={2.5} />
-            Add Transaction
-          </button>
-        </div>
-      </aside>
-
-      {/* Main Content */}
-      <main 
+      <main
         className="flex-1 relative flex flex-col h-full overflow-hidden bg-[#000000] md:bg-white page-scalable"
         data-scaled={isAddModalOpen && !isClosing}
       >
         <div className="flex-1 overflow-y-auto overscroll-contain no-scrollbar bg-[#000000] md:bg-white smooth-scroll">
-          <div className="max-w-5xl mx-auto px-4 pt-2 md:px-8 md:pt-6 md:pb-8" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 90px)' }}>
-            
-            {/* iOS Large Title Navigation Bar */}
-            <header className="flex items-end mb-6 md:hidden" style={{ paddingTop: 'max(env(safe-area-inset-top, 0px), 8px)', minHeight: '52px' }}>
-              <h2 className="text-[34px] font-bold text-white tracking-[0.37px] leading-[41px]">
-                {activeTab === 'overview' ? 'Overview' : activeTab === 'history' ? 'Transactions' : activeTab === 'insights' ? 'For You' : 'Settings'}
-              </h2>
-            </header>
-
-            {/* macOS Header */}
-            <header className="hidden md:block mb-8">
-               <h2 className="text-[34px] font-bold text-[#1D1D1F] tracking-[0.37px] leading-[41px]">
-                  {activeTab === 'overview' ? 'Overview' : activeTab === 'history' ? 'Transactions' : activeTab === 'insights' ? 'For You' : 'Settings'}
-                </h2>
-            </header>
-
-            {/* Content */}
-            <Suspense fallback={
-              <div className="flex items-center justify-center min-h-[200px]">
-                <div className="w-8 h-8 border-3 border-ios-blue border-t-transparent rounded-full animate-spin" />
-              </div>
-            }>
-              <div 
-                key={activeTab}
-                className="min-h-[200px] animate-fade-in"
-              >
-                {activeTab === 'overview' && <Dashboard transactions={transactions} />}
-                {activeTab === 'history' && <TransactionList transactions={transactions} onDelete={deleteTransaction} />}
-                {activeTab === 'insights' && <AiInsights transactions={transactions} />}
+          <div
+            className="max-w-5xl mx-auto px-4 pt-2 md:px-8 md:pt-6 md:pb-8"
+            style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 90px)' }}
+          >
+            <PageHeader activeTab={activeTab} />
+            <Suspense
+              fallback={
+                <div className="flex items-center justify-center min-h-[200px]">
+                  <div className="w-8 h-8 border-3 border-ios-blue border-t-transparent rounded-full animate-spin" />
+                </div>
+              }
+            >
+              <div key={activeTab} className="min-h-[200px] animate-fade-in">
+                {activeTab === 'overview' && (
+                  <>
+                    <Dashboard transactions={transactions} />
+                    <div className="mt-6">
+                      <AiInsights transactions={transactions} />
+                    </div>
+                  </>
+                )}
+                {activeTab === 'history' && (
+                  <TransactionList transactions={transactions} onDelete={deleteTransaction} />
+                )}
+                {activeTab === 'budget' && <Budget />}
                 {activeTab === 'settings' && <SettingsPage onClearData={handleClearData} />}
               </div>
             </Suspense>
@@ -232,97 +180,50 @@ const App: React.FC = () => {
         </div>
       </main>
 
-      {/* iOS Tab Bar */}
-      <div 
-        className="md:hidden fixed bottom-0 left-0 right-0 bg-ios-material-dark z-50 gpu-accelerated" 
-        style={{ 
-          paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 20px)', 
-          paddingTop: '8px',
-          transform: 'translate3d(0, 0, 0)',
-          backfaceVisibility: 'hidden',
-          WebkitBackfaceVisibility: 'hidden'
-        }}
-      >
-        <div className="grid grid-cols-5 h-[49px] items-center">
-          <TabItem id="overview" icon={LayoutGrid} label="Overview" />
-          <TabItem id="history" icon={List} label="Transactions" />
-          <button
-            onClick={handleOpenModal}
-            className="flex flex-col items-center justify-center w-full h-full transition-none touch-manipulation"
-            style={{ WebkitTapHighlightColor: 'transparent' }}
-          >
-            <div className="w-[44px] h-[44px] bg-ios-blue rounded-full flex items-center justify-center shadow-lg gpu-accelerated">
-              <Plus 
-                size={24} 
-                strokeWidth={2.5} 
-                className="text-white" 
-              />
-            </div>
-          </button>
-          <TabItem id="insights" icon={Sparkles} label="For You" />
-          <TabItem id="settings" icon={Settings} label="Settings" />
-        </div>
-      </div>
+      <BottomTabBar
+        activeTab={activeTab}
+        onSelectTab={setActiveTab}
+        onAddTransaction={handleOpenModal}
+      />
 
-      {/* iOS Card Modal */}
-      {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-0 md:p-4 gpu-accelerated">
-          <div 
-            className={`absolute inset-0 bg-black/50 ${isClosing ? 'animate-fade-out' : 'animate-fade-in'}`}
-            onClick={handleCloseModal}
-            style={{ 
-              transform: 'translate3d(0, 0, 0)',
-              touchAction: 'none',
-              backfaceVisibility: 'hidden',
-              WebkitBackfaceVisibility: 'hidden'
-            }}
-          />
-          
-          <div 
-            className={`relative w-full max-h-[94vh] md:h-auto md:w-full md:max-w-[540px] rounded-t-[28px] md:rounded-[28px] flex flex-col md:max-h-[85vh] shadow-2xl overflow-hidden ${isClosing ? 'md:animate-scale-out animate-slide-down' : 'md:animate-scale-in animate-slide-up'}`}
-            onClick={(e) => e.stopPropagation()}
-            style={{ 
-              backdropFilter: 'blur(20px) saturate(150%)',
-              WebkitBackdropFilter: 'blur(20px) saturate(150%)',
-              boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 20px 60px rgba(0, 0, 0, 0.8)',
-              transform: 'translate3d(0, 0, 0)',
-              touchAction: 'auto',
-              backfaceVisibility: 'hidden',
-              WebkitBackfaceVisibility: 'hidden'
-            }}
-          >
-             <div className="flex-none flex items-center justify-between h-14 px-4 border-b border-white/5 contain-layout" style={{ 
-               background: 'rgba(28, 28, 30, 0.7)',
-               transform: 'translate3d(0, 0, 0)'
-             }}>
-                <h3 className="text-[20px] font-bold text-white tracking-tight">New Transaction</h3>
-                <button 
-                  onClick={handleCloseModal} 
-                  className="text-ios-blue text-[17px] font-semibold active:opacity-60 transition-opacity tracking-[-0.41px]"
-                >
-                  Cancel
-                </button>
-             </div>
-             
-             <div className="flex-1 overflow-y-auto overscroll-contain no-scrollbar smooth-scroll" style={{ 
-               background: 'linear-gradient(to bottom, rgba(28, 28, 30, 0.7) 0%, rgba(0, 0, 0, 0.95) 40%, rgba(0, 0, 0, 1) 80%)',
-               WebkitOverflowScrolling: 'touch',
-               touchAction: 'pan-y',
-               transform: 'translate3d(0, 0, 0)'
-             }}>
-               <Suspense fallback={
-                 <div className="flex items-center justify-center h-full">
-                   <div className="w-8 h-8 border-3 border-white border-t-transparent rounded-full animate-spin" />
-                 </div>
-               }>
-                 <TransactionForm onAddTransaction={addTransaction} onClose={handleCloseModal} />
-               </Suspense>
-             </div>
-          </div>
-        </div>
-      )}
+      <AddTransactionModal open={isAddModalOpen} isClosing={isClosing} onClose={handleCloseModal}>
+        <TransactionForm onAddTransaction={addTransaction} onClose={handleCloseModal} />
+      </AddTransactionModal>
     </div>
   );
+
+  if (!isInitialized) {
+    return (
+      <AlertProvider>
+        <div className="fixed inset-0 bg-black flex items-center justify-center">
+          <div className="w-12 h-12 border-3 border-white border-t-transparent rounded-full animate-spin" />
+        </div>
+      </AlertProvider>
+    );
+  }
+
+  if (showOnboarding) {
+    return (
+      <AlertProvider>
+        <Suspense
+          fallback={
+            <div className="fixed inset-0 bg-black flex items-center justify-center">
+              <div className="w-8 h-8 border-3 border-white border-t-transparent rounded-full animate-spin" />
+            </div>
+          }
+        >
+          <Onboarding
+            onComplete={async () => {
+              await dbHelpers.setSetting('xpense-onboarding-complete', true);
+              setShowOnboarding(false);
+            }}
+          />
+        </Suspense>
+      </AlertProvider>
+    );
+  }
+
+  return <AlertProvider>{renderContent()}</AlertProvider>;
 };
 
 export default App;

@@ -291,7 +291,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                   <div className="flex items-start gap-2 bg-[#0A0A0A] rounded-[12px] p-3 border border-[#1C1C1E]">
                     <Lock size={14} className="text-[#8E8E93] mt-0.5 shrink-0" strokeWidth={2.5} />
                     <p className="text-[12px] text-[#8E8E93] tracking-[-0.08px] leading-relaxed">
-                      Your API key is stored locally on your device and never shared. You can change it anytime in Settings.
+                      Your API key is stored locally on your device. When you use AI features, only the necessary data is shared with Gemini for processing. We do not store or share your data.
                     </p>
                   </div>
                 </div>

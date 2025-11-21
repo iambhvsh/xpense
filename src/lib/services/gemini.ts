@@ -15,13 +15,25 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
 import { Transaction, ReceiptData, Category } from "../types";
+import { dbHelpers } from "../db";
+import { CATEGORY_SUGGESTION_PROMPT } from "../constants";
 
-const getApiKey = () => {
-  return localStorage.getItem('xpense-api-key') || process.env.API_KEY || '';
+// Cache for API key to avoid async calls
+let apiKeyCache: string | null = null;
+
+const getApiKey = async () => {
+  if (apiKeyCache) return apiKeyCache;
+  apiKeyCache = await dbHelpers.getSetting('xpense-api-key') || process.env.API_KEY || '';
+  return apiKeyCache;
 };
 
-const createAI = () => {
-  const apiKey = getApiKey();
+// Update cache when API key changes
+export const updateApiKeyCache = (key: string) => {
+  apiKeyCache = key;
+};
+
+const createAI = async () => {
+  const apiKey = await getApiKey();
   return new GoogleGenAI({ apiKey });
 };
 
@@ -39,27 +51,27 @@ const CURRENCY_INFO: Record<string, { name: string; symbol: string; code: string
   'KRW': { name: 'South Korean Won', symbol: '₩', code: 'KRW' },
 };
 
-const getUserCurrency = () => {
-  const currencyCode = localStorage.getItem('xpense-currency') || 'USD';
+const getUserCurrency = async () => {
+  const currencyCode = await dbHelpers.getSetting('xpense-currency') || 'USD';
   return CURRENCY_INFO[currencyCode] || CURRENCY_INFO['USD'];
 };
 
-const getUserDateFormat = () => {
-  return localStorage.getItem('xpense-date-format') || 'MM/DD/YYYY';
+const getUserDateFormat = async () => {
+  return await dbHelpers.getSetting('xpense-date-format') || 'MM/DD/YYYY';
 };
 
 export const analyzeReceipt = async (
   base64Image: string, 
   mimeType: string = 'image/jpeg'
 ): Promise<ReceiptData> => {
-  const apiKey = getApiKey();
+  const apiKey = await getApiKey();
   if (!apiKey) {
     throw new Error("API Key not found. Please add your Gemini API key in Settings.");
   }
   
-  const ai = createAI();
-  const userCurrency = getUserCurrency();
-  const dateFormat = getUserDateFormat();
+  const ai = await createAI();
+  const userCurrency = await getUserCurrency();
+  const dateFormat = await getUserDateFormat();
   
   // Get current date for context
   const today = new Date();
@@ -134,7 +146,8 @@ INSTRUCTIONS:
    - If date is unclear, use today's date
 3. **Amount**: Look for 'Total', 'Amount', 'Grand Total', 'Net Total', 'Balance Due'
    ${conversionData.convertedAmount ? `- The converted amount in ${userCurrency.code} is: ${conversionData.convertedAmount}` : ''}
-4. **Category**: Choose from: Food, Transport, Shopping, Utilities, Entertainment, Health, Other
+4. **Category**: Choose from the supported categories:
+${CATEGORY_SUGGESTION_PROMPT}
 5. **Items**: List of items purchased (if visible)
 
 Return pure JSON matching the schema.`;
@@ -188,13 +201,13 @@ Return pure JSON matching the schema.`;
 };
 
 export const generateInsights = async (transactions: Transaction[]): Promise<string> => {
-  const apiKey = getApiKey();
+  const apiKey = await getApiKey();
   if (!apiKey) return "Please add your Gemini API key in Settings to get AI insights.";
   if (transactions.length === 0) return "No transactions found to analyze.";
 
-  const ai = createAI();
-  const userCurrency = getUserCurrency();
-  const dateFormat = getUserDateFormat();
+  const ai = await createAI();
+  const userCurrency = await getUserCurrency();
+  const dateFormat = await getUserDateFormat();
   
   // Format transactions with user's currency and date format
   const formatDate = (dateString: string): string => {
@@ -258,11 +271,11 @@ Focus on practical advice that the user can implement immediately.`;
 };
 
 export const suggestCategory = async (description: string): Promise<Category> => {
-  const apiKey = getApiKey();
+  const apiKey = await getApiKey();
   if (!apiKey) return Category.OTHER;
   
-  const ai = createAI();
-  const userCurrency = getUserCurrency();
+  const ai = await createAI();
+  const userCurrency = await getUserCurrency();
   
   try {
     const response = await ai.models.generateContent({
@@ -272,13 +285,7 @@ export const suggestCategory = async (description: string): Promise<Category> =>
 TASK: Categorize this transaction: "${description}"
 
 AVAILABLE CATEGORIES:
-- Food: Restaurants, groceries, dining, cafes, food delivery
-- Transport: Fuel, parking, public transit, ride-sharing, vehicle maintenance
-- Shopping: Clothes, electronics, general shopping, online purchases
-- Utilities: Electricity, water, internet, phone bills, rent
-- Entertainment: Movies, games, subscriptions, hobbies, events
-- Health: Medical, pharmacy, fitness, wellness, insurance
-- Other: Anything that doesn't fit the above categories
+${CATEGORY_SUGGESTION_PROMPT}
 
 CONTEXT:
 - User's currency: ${userCurrency.name} (${userCurrency.code})

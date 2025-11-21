@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Transaction } from '@/lib/types';
-import { StatCard } from './components/StatCard';
-import { ExpenseBreakdown } from './components/ExpenseBreakdown';
-import { ActivityChart } from './components/ActivityChart';
+import { StatCard } from '@/components/dashboard/StatCard';
+import { ExpenseBreakdown } from '@/components/dashboard/ExpenseBreakdown';
+import { ActivityChart } from '@/components/dashboard/ActivityChart';
 import { useDashboardData } from './hooks/useDashboardData';
 
 interface DashboardProps {

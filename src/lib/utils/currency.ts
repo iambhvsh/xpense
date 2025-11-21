@@ -1,5 +1,26 @@
+import { dbHelpers } from '../db';
+
+// Cache for currency and date format to avoid async calls on every render
+let currencyCache: string | null = null;
+let dateFormatCache: string | null = null;
+
+// Initialize cache from database
+export const initializeCurrencyCache = async () => {
+  currencyCache = await dbHelpers.getSetting('xpense-currency') || 'USD';
+  dateFormatCache = await dbHelpers.getSetting('xpense-date-format') || 'MM/DD/YYYY';
+};
+
+// Update cache when settings change
+export const updateCurrencyCache = (currency: string) => {
+  currencyCache = currency;
+};
+
+export const updateDateFormatCache = (format: string) => {
+  dateFormatCache = format;
+};
+
 export const getCurrencySymbol = (): string => {
-  const currency = localStorage.getItem('xpense-currency') || 'USD';
+  const currency = currencyCache || 'USD';
   
   const symbols: Record<string, string> = {
     'USD': '$',
@@ -28,7 +49,7 @@ export const formatCurrency = (amount: number): string => {
 };
 
 export const formatDate = (dateString: string): string => {
-  const format = localStorage.getItem('xpense-date-format') || 'MM/DD/YYYY';
+  const format = dateFormatCache || 'MM/DD/YYYY';
   const date = new Date(dateString);
   
   const day = date.getDate().toString().padStart(2, '0');

@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { Transaction } from '@/lib/types';
-import { TransactionItem } from './components/TransactionItem';
-import { EmptyState } from '@/shared/components/EmptyState';
+import { TransactionItem } from '@/components/transactions/TransactionItem';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { ShoppingBag } from 'lucide-react';
 import { useDevicePerformance } from '@/lib/hooks/usePerformance';
 

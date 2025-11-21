@@ -1,9 +1,11 @@
 import React, { useState, useRef } from 'react';
-import { Category, Transaction } from '@/lib/types';
-import { analyzeReceipt, suggestCategory } from '@/lib/services/gemini';
+import { Transaction } from '@/lib/types';
+import { analyzeReceipt } from '@/lib/services/gemini';
 import { ScanLine } from 'lucide-react';
-import { Spinner } from '@/shared/components/Spinner';
+import { Spinner } from '@/components/ui/Spinner';
 import { getCurrencySymbol } from '@/lib/utils/currency';
+import { useCategories } from '@/lib/hooks/useDatabase';
+import { useAlert } from '@/components/context/AlertProvider';
 
 interface ExpenseFormProps {
   onAddTransaction: (t: Omit<Transaction, 'id'>) => void;
@@ -11,52 +13,68 @@ interface ExpenseFormProps {
 }
 
 export const TransactionForm: React.FC<ExpenseFormProps> = ({ onAddTransaction, onClose }) => {
+  const { categories, isLoading: categoriesLoading } = useCategories();
+  const showAlert = useAlert();
+  
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
-  const [category, setCategory] = useState<Category>(Category.FOOD);
+  const [note, setNote] = useState('');
+  const [category, setCategory] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [isExpense, setIsExpense] = useState(true);
   
   const [isScanning, setIsScanning] = useState(false);
-  const [isSuggesting, setIsSuggesting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const noteTextareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    console.log('Form submitted', { amount, description, category, date, isExpense });
+  // Set default category when categories load
+  React.useEffect(() => {
+    if (categories.length > 0 && !category) {
+      setCategory(categories[0].name);
+    }
+  }, [categories, category]);
+
+  // Auto-resize textarea with character limit
+  const handleNoteChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const value = e.target.value;
     
-    if (!amount || !description) {
-      console.log('Missing required fields');
+    // Limit to 250 characters
+    if (value.length <= 250) {
+      setNote(value);
+      
+      // Auto-resize
+      const textarea = e.target;
+      textarea.style.height = 'auto';
+      textarea.style.height = textarea.scrollHeight + 'px';
+    }
+  };
+
+  const canSubmit = amount.trim() !== '' && description.trim() !== '';
+
+  const buildTransactionPayload = () => ({
+    amount: parseFloat(amount),
+    description,
+    note,
+    category,
+    date: new Date(date).toISOString(),
+    isExpense
+  });
+
+  const submitTransaction = () => {
+    if (!canSubmit) {
       return;
     }
-    
-    const transaction = {
-      amount: parseFloat(amount),
-      description: description,
-      category,
-      date: new Date(date).toISOString(),
-      isExpense
-    };
-    
-    console.log('Adding transaction:', transaction);
-    onAddTransaction(transaction);
+    onAddTransaction(buildTransactionPayload());
     onClose();
   };
 
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    submitTransaction();
+  };
+
   const handleButtonClick = () => {
-    console.log('Button clicked', { amount, description });
-    if (amount && description) {
-      const transaction = {
-        amount: parseFloat(amount),
-        description: description,
-        category,
-        date: new Date(date).toISOString(),
-        isExpense
-      };
-      console.log('Adding transaction via button:', transaction);
-      onAddTransaction(transaction);
-      onClose();
-    }
+    submitTransaction();
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -78,7 +96,10 @@ export const TransactionForm: React.FC<ExpenseFormProps> = ({ onAddTransaction, 
           if (receiptData.category) setCategory(receiptData.category);
           setIsExpense(true); 
         } catch (err) {
-          alert("Could not analyze receipt.");
+          showAlert({
+            title: 'Scan Failed',
+            message: 'Could not analyze receipt. Please try again.'
+          });
         } finally {
           setIsScanning(false);
         }
@@ -89,21 +110,12 @@ export const TransactionForm: React.FC<ExpenseFormProps> = ({ onAddTransaction, 
     }
   };
 
-  const handleAutoCategorize = async () => {
-    if (!description) return;
-    setIsSuggesting(true);
-    try {
-      const suggested = await suggestCategory(description);
-      setCategory(suggested);
-    } finally {
-      setIsSuggesting(false);
-    }
-  };
+
 
   return (
-    <form onSubmit={handleSubmit} className="h-full bg-transparent">
+    <form onSubmit={handleSubmit} className="bg-transparent">
       
-      <div className="px-4 pt-6 pb-32 space-y-6">
+      <div className="px-4 pt-6 pb-8 space-y-6">
         
         {/* Large Amount Input - iOS Calculator style */}
         <div className="flex flex-col items-center justify-center py-12 relative">
@@ -171,39 +183,37 @@ export const TransactionForm: React.FC<ExpenseFormProps> = ({ onAddTransaction, 
             <div className="flex items-center px-4 min-h-[44px] relative">
                <div className="absolute bottom-0 left-4 right-0 h-[0.33px] bg-[#38383A]" />
                <label className="w-24 text-white text-[17px] tracking-[-0.41px]">Title</label>
-               <div className="flex-1 relative">
-                 <input
-                   type="text"
-                   required
-                   value={description}
-                   onBlur={() => description && handleAutoCategorize()}
-                   onChange={(e) => setDescription(e.target.value)}
-                   className="w-full bg-transparent text-white text-[17px] placeholder-[#8E8E93] text-right py-3 tracking-[-0.41px] outline-none border-none"
-                   placeholder="Required"
-                   style={{ WebkitAppearance: 'none' }}
-                 />
-                 {isSuggesting && (
-                   <div className="absolute right-0 top-1/2 -translate-y-1/2 bg-[#1C1C1E] pl-2">
-                      <Spinner className="w-4 h-4 text-ios-blue" />
-                   </div>
-                 )}
-               </div>
+               <input
+                 type="text"
+                 required
+                 value={description}
+                 onChange={(e) => setDescription(e.target.value)}
+                 className="flex-1 bg-transparent text-white text-[17px] placeholder-[#8E8E93] text-right py-3 tracking-[-0.41px] outline-none border-none"
+                 placeholder="Required"
+                 style={{ WebkitAppearance: 'none' }}
+               />
             </div>
 
             {/* Category */}
             <div className="flex items-center px-4 min-h-[44px] relative">
                <div className="absolute bottom-0 left-4 right-0 h-[0.33px] bg-[#38383A]" />
                <label className="w-24 text-white text-[17px] tracking-[-0.41px]">Category</label>
-               <select
-                 value={category}
-                 onChange={(e) => setCategory(e.target.value as Category)}
-                 className="flex-1 bg-transparent text-ios-blue text-[17px] text-right appearance-none cursor-pointer py-3 tracking-[-0.41px] outline-none border-none"
-                 style={{ direction: 'rtl', WebkitAppearance: 'none' }}
-               >
-                 {Object.values(Category).map(c => (
-                   <option key={c} value={c}>{c}</option>
-                 ))}
-               </select>
+               {categoriesLoading ? (
+                 <div className="flex-1 flex justify-end py-3">
+                   <Spinner className="w-4 h-4 text-ios-blue" />
+                 </div>
+               ) : (
+                 <select
+                   value={category}
+                   onChange={(e) => setCategory(e.target.value)}
+                   className="flex-1 bg-transparent text-ios-blue text-[17px] text-right appearance-none cursor-pointer py-3 tracking-[-0.41px] outline-none border-none"
+                   style={{ direction: 'rtl', WebkitAppearance: 'none' }}
+                 >
+                   {categories.map(c => (
+                     <option key={c.id} value={c.name}>{c.name}</option>
+                   ))}
+                 </select>
+               )}
             </div>
 
             {/* Date */}
@@ -218,13 +228,28 @@ export const TransactionForm: React.FC<ExpenseFormProps> = ({ onAddTransaction, 
                  style={{ direction: 'rtl', WebkitAppearance: 'none' }}
                />
             </div>
+
+        </div>
+
+        {/* Note - Full Width */}
+        <div className="bg-[#1C1C1E] rounded-[20px] overflow-hidden shadow-sm px-4 py-3">
+          <textarea
+            ref={noteTextareaRef}
+            value={note}
+            onChange={handleNoteChange}
+            placeholder="Add note (optional)"
+            maxLength={250}
+            rows={1}
+            className="w-full bg-transparent text-white text-[17px] placeholder-[#8E8E93] text-left tracking-[-0.41px] outline-none border-none resize-none overflow-hidden"
+            style={{ WebkitAppearance: 'none', minHeight: '24px' }}
+          />
         </div>
 
         {/* Submit Button */}
         <button
           type="button"
           onClick={handleButtonClick}
-          disabled={!amount || !description || isScanning || isSuggesting}
+          disabled={!canSubmit || isScanning}
           className="w-full py-4 bg-ios-blue active:bg-[#0051D5] text-white font-semibold text-[17px] rounded-[16px] transition-colors shadow-sm tracking-[-0.41px] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:bg-ios-blue"
         >
           Add Transaction

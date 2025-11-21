@@ -12,8 +12,9 @@ export enum Category {
 export interface Transaction {
   id: string;
   amount: number;
-  category: Category;
+  category: string;
   description: string;
+  note?: string;
   date: string;
   isExpense: boolean;
 }
