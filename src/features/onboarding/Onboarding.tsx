@@ -47,16 +47,22 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
     }
   };
 
-  const handleGetStarted = () => {
+  const handleGetStarted = async () => {
     if (isClosing) return;
 
+    if (apiKey.trim()) {
+      // Store API key in database instead of localStorage
+      const { dbHelpers } = await import('@/lib/db');
+      await dbHelpers.setSetting('xpense-api-key', apiKey.trim());
+      
+      // Update cache
+      const { updateApiKeyCache } = await import('@/lib/services/gemini');
+      updateApiKeyCache(apiKey.trim());
+    }
+    
+    localStorage.setItem('xpense-onboarding-complete', 'true');
+    
     requestAnimationFrame(() => {
-      if (apiKey.trim()) {
-        localStorage.setItem('xpense-api-key', apiKey.trim());
-      }
-      
-      localStorage.setItem('xpense-onboarding-complete', 'true');
-      
       setIsClosing(true);
       timeoutRef.current = setTimeout(() => {
         onComplete();

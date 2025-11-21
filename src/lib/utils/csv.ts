@@ -11,6 +11,7 @@ export interface CSVRow {
   description: string;
   note: string;
   date: string;
+  isExpense?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -22,7 +23,7 @@ export interface CSVValidationResult {
 }
 
 // CSV Headers
-const CSV_HEADERS = ['amount', 'category', 'description', 'note', 'date', 'createdAt', 'updatedAt'];
+const CSV_HEADERS = ['amount', 'category', 'description', 'note', 'date', 'isExpense', 'createdAt', 'updatedAt'];
 
 /**
  * Export transactions to CSV string
@@ -39,6 +40,7 @@ export function exportToCSV(transactions: TransactionRecord[]): string {
       escapeCSVField(t.description),
       escapeCSVField(t.note),
       t.date,
+      t.isExpense,
       t.createdAt,
       t.updatedAt
     ].join(',');
@@ -203,6 +205,16 @@ export function validateCSVData(
         throw new Error('Invalid date format (use ISO format: YYYY-MM-DD)');
       }
       
+      // Validate isExpense (default to true if not provided or if category exists)
+      let isExpense = true;
+      if (row.isExpense !== undefined) {
+        const isExpenseStr = row.isExpense.toLowerCase();
+        isExpense = isExpenseStr === 'true' || isExpenseStr === '1' || isExpenseStr === 'yes';
+      } else {
+        // If not provided, infer: if category is empty, it's income
+        isExpense = category !== '';
+      }
+      
       // Use provided timestamps or generate new ones
       const now = new Date().toISOString();
       const createdAt = row.createdAt && !isNaN(new Date(row.createdAt).getTime()) 
@@ -219,6 +231,7 @@ export function validateCSVData(
         description,
         note,
         date: date.toISOString(),
+        isExpense,
         createdAt,
         updatedAt
       });

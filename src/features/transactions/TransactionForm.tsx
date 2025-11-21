@@ -55,7 +55,7 @@ export const TransactionForm: React.FC<ExpenseFormProps> = ({ onAddTransaction, 
     amount: parseFloat(amount),
     description,
     note,
-    category,
+    category: isExpense ? category : '',
     date: new Date(date).toISOString(),
     isExpense
   });
@@ -194,27 +194,29 @@ export const TransactionForm: React.FC<ExpenseFormProps> = ({ onAddTransaction, 
                />
             </div>
 
-            {/* Category */}
-            <div className="flex items-center px-4 min-h-[44px] relative">
-               <div className="absolute bottom-0 left-4 right-0 h-[0.33px] bg-[#38383A]" />
-               <label className="w-24 text-white text-[17px] tracking-[-0.41px]">Category</label>
-               {categoriesLoading ? (
-                 <div className="flex-1 flex justify-end py-3">
-                   <Spinner className="w-4 h-4 text-ios-blue" />
-                 </div>
-               ) : (
-                 <select
-                   value={category}
-                   onChange={(e) => setCategory(e.target.value)}
-                   className="flex-1 bg-transparent text-ios-blue text-[17px] text-right appearance-none cursor-pointer py-3 tracking-[-0.41px] outline-none border-none"
-                   style={{ direction: 'rtl', WebkitAppearance: 'none' }}
-                 >
-                   {categories.map(c => (
-                     <option key={c.id} value={c.name}>{c.name}</option>
-                   ))}
-                 </select>
-               )}
-            </div>
+            {/* Category - Only show for expenses */}
+            {isExpense && (
+              <div className="flex items-center px-4 min-h-[44px] relative">
+                 <div className="absolute bottom-0 left-4 right-0 h-[0.33px] bg-[#38383A]" />
+                 <label className="w-24 text-white text-[17px] tracking-[-0.41px]">Category</label>
+                 {categoriesLoading ? (
+                   <div className="flex-1 flex justify-end py-3">
+                     <Spinner className="w-4 h-4 text-ios-blue" />
+                   </div>
+                 ) : (
+                   <select
+                     value={category}
+                     onChange={(e) => setCategory(e.target.value)}
+                     className="flex-1 bg-transparent text-ios-blue text-[17px] text-right appearance-none cursor-pointer py-3 tracking-[-0.41px] outline-none border-none"
+                     style={{ direction: 'rtl', WebkitAppearance: 'none' }}
+                   >
+                     {categories.map(c => (
+                       <option key={c.id} value={c.name}>{c.name}</option>
+                     ))}
+                   </select>
+                 )}
+              </div>
+            )}
 
             {/* Date */}
             <div className="flex items-center px-4 min-h-[44px] relative">

@@ -80,7 +80,7 @@ export function calculateCategoryBudget(
     .filter(t => 
       t.category === category.name && 
       t.amount > 0 && 
-      !t.category.toLowerCase().includes('income')
+      t.isExpense
     )
     .reduce((sum, t) => sum + t.amount, 0);
 
@@ -172,19 +172,19 @@ export function compareMonths(
   previousMonthTransactions: TransactionRecord[]
 ): MonthComparison {
   const currentSpent = currentMonthTransactions
-    .filter(t => t.amount > 0 && !t.category.toLowerCase().includes('income'))
+    .filter(t => t.amount > 0 && t.isExpense)
     .reduce((sum, t) => sum + t.amount, 0);
 
   const currentIncome = currentMonthTransactions
-    .filter(t => t.category.toLowerCase().includes('income'))
+    .filter(t => !t.isExpense)
     .reduce((sum, t) => sum + t.amount, 0);
 
   const prevSpent = previousMonthTransactions
-    .filter(t => t.amount > 0 && !t.category.toLowerCase().includes('income'))
+    .filter(t => t.amount > 0 && t.isExpense)
     .reduce((sum, t) => sum + t.amount, 0);
 
   const prevIncome = previousMonthTransactions
-    .filter(t => t.category.toLowerCase().includes('income'))
+    .filter(t => !t.isExpense)
     .reduce((sum, t) => sum + t.amount, 0);
 
   const spentChange = currentSpent - prevSpent;

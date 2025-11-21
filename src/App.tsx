@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
+import { App as CapacitorApp } from '@capacitor/app';
 import { Transaction } from './lib/types';
 import { useDatabaseInit } from './lib/hooks/useDatabase';
 import { useTransactions } from './lib/hooks/useDatabase';
@@ -42,6 +43,7 @@ const App: React.FC = () => {
   const [isClosing, setIsClosing] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
   const animationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isNavigatingRef = useRef(false);
 
   // Check onboarding status and initialize caches from database
   useEffect(() => {
@@ -57,6 +59,93 @@ const App: React.FC = () => {
       });
     }
   }, [isInitialized]);
+
+  // Initialize browser history for tab navigation
+  useEffect(() => {
+    if (!isInitialized || showOnboarding) return;
+
+    // Get initial tab from URL hash or default to overview
+    const hash = window.location.hash.slice(1) as AppTab;
+    const validTabs: AppTab[] = ['overview', 'history', 'budget', 'settings'];
+    const initialTab = validTabs.includes(hash) ? hash : 'overview';
+    
+    if (initialTab !== activeTab) {
+      setActiveTab(initialTab);
+    }
+
+    // If no hash, set initial hash
+    if (!window.location.hash) {
+      window.history.replaceState(null, '', '#overview');
+    }
+
+    // Handle browser back/forward navigation
+    const handlePopState = (event: PopStateEvent) => {
+      // If modal is open and back is pressed, close the modal
+      if (isAddModalOpen && event.state?.modal === 'add-transaction') {
+        return; // Let the modal close naturally
+      }
+      
+      if (isAddModalOpen) {
+        // Close modal without going back in history
+        setIsClosing(true);
+        setTimeout(() => {
+          setIsAddModalOpen(false);
+          setIsClosing(false);
+        }, 300);
+        return;
+      }
+      
+      if (isNavigatingRef.current) return;
+      
+      const hash = window.location.hash.slice(1) as AppTab;
+      const newTab = validTabs.includes(hash) ? hash : 'overview';
+      
+      if (newTab !== activeTab) {
+        setActiveTab(newTab);
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+
+    window.addEventListener('popstate', handlePopState);
+
+    // Handle Android hardware back button via Capacitor
+    let backButtonListener: any = null;
+    
+    CapacitorApp.addListener('backButton', ({ canGoBack }) => {
+      // If modal is open, close it
+      if (isAddModalOpen) {
+        setIsClosing(true);
+        setTimeout(() => {
+          setIsAddModalOpen(false);
+          setIsClosing(false);
+        }, 300);
+        return;
+      }
+
+      // If not on overview tab, go back to overview
+      if (activeTab !== 'overview') {
+        window.history.back();
+        return;
+      }
+
+      // If on overview and can't go back, exit app
+      if (!canGoBack) {
+        CapacitorApp.exitApp();
+      } else {
+        window.history.back();
+      }
+    }).then(listener => {
+      backButtonListener = listener;
+    });
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      if (backButtonListener) {
+        backButtonListener.remove();
+      }
+    };
+  }, [isInitialized, showOnboarding, activeTab, isAddModalOpen]);
 
   useEffect(() => {
     // Cleanup timeout on unmount
@@ -76,11 +165,26 @@ const App: React.FC = () => {
     await deleteDbTransaction(parseInt(id));
   }, [deleteDbTransaction]);
 
+  const handleTabChange = useCallback((tab: AppTab) => {
+    if (tab === activeTab) return;
+    
+    isNavigatingRef.current = true;
+    setActiveTab(tab);
+    
+    // Update URL hash for browser history
+    window.history.pushState(null, '', `#${tab}`);
+    
+    // Reset navigation flag after a short delay
+    setTimeout(() => {
+      isNavigatingRef.current = false;
+    }, 100);
+  }, [activeTab]);
+
   const handleClearData = useCallback(async () => {
     await dbHelpers.clearAllData();
     await seedDefaultCategories();
-    setActiveTab('overview');
-  }, []);
+    handleTabChange('overview');
+  }, [handleTabChange]);
 
   const handleOpenModal = useCallback(() => {
     // Prevent opening if already animating
@@ -96,6 +200,9 @@ const App: React.FC = () => {
       setIsAnimating(true);
       setIsClosing(false);
       setIsAddModalOpen(true);
+      
+      // Add modal state to history
+      window.history.pushState({ modal: 'add-transaction' }, '', window.location.href);
       
       // Reset animation lock after animation completes
       animationTimeoutRef.current = setTimeout(() => {
@@ -118,6 +225,11 @@ const App: React.FC = () => {
       setIsAnimating(true);
       setIsClosing(true);
       
+      // Go back in history if modal was opened via history push
+      if (window.history.state?.modal === 'add-transaction') {
+        window.history.back();
+      }
+      
       animationTimeoutRef.current = setTimeout(() => {
         setIsAddModalOpen(false);
         setIsClosing(false);
@@ -138,7 +250,7 @@ const App: React.FC = () => {
     >
       <Sidebar
         activeTab={activeTab}
-        onSelectTab={setActiveTab}
+        onSelectTab={handleTabChange}
         onAddTransaction={handleOpenModal}
         dimmed={isAddModalOpen && !isClosing}
       />
@@ -182,7 +294,7 @@ const App: React.FC = () => {
 
       <BottomTabBar
         activeTab={activeTab}
-        onSelectTab={setActiveTab}
+        onSelectTab={handleTabChange}
         onAddTransaction={handleOpenModal}
       />
 

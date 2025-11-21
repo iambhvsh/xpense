@@ -54,6 +54,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClearData }) => {
   const [isClosingPrivacyPolicy, setIsClosingPrivacyPolicy] = useState(false);
   const [showApiKeyModal, setShowApiKeyModal] = useState(false);
   const [apiKeyInput, setApiKeyInput] = useState('');
+  const [showApiKeyValue, setShowApiKeyValue] = useState(false);
   const hasApiKey = !!apiKey;
   
   // Animation locks to prevent rapid clicking issues
@@ -68,8 +69,14 @@ export const Settings: React.FC<SettingsProps> = ({ onClearData }) => {
 
   useEffect(() => {
     // Load API key into input when modal opens
-    if (showApiKeyModal && apiKey) {
-      setApiKeyInput(apiKey);
+    if (showApiKeyModal) {
+      if (apiKey) {
+        setApiKeyInput(apiKey);
+        setShowApiKeyValue(false);
+      } else {
+        setApiKeyInput('');
+        setShowApiKeyValue(true);
+      }
     }
   }, [showApiKeyModal, apiKey]);
 
@@ -244,6 +251,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClearData }) => {
 
   const handleOpenApiKeyModal = () => {
     setApiKeyInput(apiKey || '');
+    setShowApiKeyValue(!apiKey);
     setShowApiKeyModal(true);
   };
 
@@ -253,6 +261,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClearData }) => {
       updateApiKeyCache(apiKeyInput.trim());
       setShowApiKeyModal(false);
       setApiKeyInput('');
+      setShowApiKeyValue(false);
     }
   };
 
@@ -260,6 +269,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClearData }) => {
     await dbHelpers.deleteSetting('xpense-api-key');
     updateApiKeyCache('');
     setApiKeyInput('');
+    setShowApiKeyValue(false);
     setShowApiKeyModal(false);
   };
 
@@ -656,7 +666,25 @@ export const Settings: React.FC<SettingsProps> = ({ onClearData }) => {
             <div className="px-4 pt-5 pb-4">
               <h3 className="text-[17px] font-semibold text-white md:text-[#000000] tracking-[-0.41px] mb-2 text-center">Gemini API Key</h3>
               <p className="text-[13px] text-[#8E8E93] tracking-[-0.08px] leading-[18px] mb-4 text-center">Enter your Gemini API key to enable AI-powered financial insights</p>
-              <input type="text" value={apiKeyInput} onChange={(e) => setApiKeyInput(e.target.value)} placeholder="Enter API key" className="w-full px-4 py-3 bg-[#2C2C2E] md:bg-[#F5F5F7] text-white md:text-[#000000] rounded-[10px] text-[15px] tracking-[-0.24px] border-none outline-none focus:ring-2 focus:ring-[#007AFF] mb-3" autoFocus />
+              <div className="relative mb-3">
+                <input 
+                  type={showApiKeyValue ? "text" : "password"} 
+                  value={apiKeyInput} 
+                  onChange={(e) => setApiKeyInput(e.target.value)} 
+                  placeholder="Enter API key" 
+                  className="w-full px-4 py-3 bg-[#2C2C2E] md:bg-[#F5F5F7] text-white md:text-[#000000] rounded-[10px] text-[15px] tracking-[-0.24px] border-none outline-none focus:ring-2 focus:ring-[#007AFF] pr-16" 
+                  autoFocus 
+                />
+                {apiKeyInput && (
+                  <button
+                    type="button"
+                    onClick={() => setShowApiKeyValue(!showApiKeyValue)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[13px] text-[#007AFF] font-semibold tracking-[-0.08px] active:opacity-60 transition-opacity"
+                  >
+                    {showApiKeyValue ? 'Hide' : 'Show'}
+                  </button>
+                )}
+              </div>
               <p className="text-[11px] text-[#8E8E93] tracking-[-0.08px] leading-[16px] mb-4">Get your API key from <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-[#007AFF] underline">Google AI Studio</a></p>
             </div>
             <div className="border-t border-[#38383A] md:border-[#C6C6C8]">

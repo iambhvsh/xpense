@@ -9,6 +9,7 @@ export interface TransactionRecord {
   description: string;
   note: string;
   date: string; // ISO string
+  isExpense: boolean; // true for expense, false for income
   createdAt: string; // ISO string
   updatedAt: string; // ISO string
 }
@@ -53,6 +54,22 @@ class XpenseDatabase extends Dexie {
       categories: '++id, name, monthlyBudget',
       recurringExpenses: '++id, nextRun, frequency',
       settings: 'key'
+    });
+
+    // Version 2: Add isExpense field to transactions
+    this.version(2).stores({
+      transactions: '++id, date, category, description, note, isExpense',
+      categories: '++id, name, monthlyBudget',
+      recurringExpenses: '++id, nextRun, frequency',
+      settings: 'key'
+    }).upgrade(async (trans) => {
+      // Migrate existing transactions to have isExpense field
+      const transactions = await trans.table('transactions').toArray();
+      for (const transaction of transactions) {
+        // If category is empty or amount is positive, it's likely income
+        const isExpense = transaction.category !== '' && transaction.amount !== 0;
+        await trans.table('transactions').update(transaction.id, { isExpense });
+      }
     });
   }
 }
@@ -346,7 +363,8 @@ export const dbHelpers = {
         category: expense.category,
         description: expense.description,
         note: `${expense.note} (Recurring)`,
-        date: now.toISOString()
+        date: now.toISOString(),
+        isExpense: true // Recurring expenses are always expenses
       });
 
       // Calculate next run date

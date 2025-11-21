@@ -14,7 +14,7 @@ export function transactionRecordToTransaction(record: TransactionRecord): Trans
     description: record.description,
     note: record.note,
     date: record.date,
-    isExpense: record.amount < 0 || !record.category.toLowerCase().includes('income')
+    isExpense: record.isExpense
   };
 }
 
@@ -26,7 +26,8 @@ export function transactionToTransactionRecord(
     category: transaction.category,
     description: transaction.description,
     note: transaction.note || '',
-    date: transaction.date
+    date: transaction.date,
+    isExpense: transaction.isExpense
   };
 }
 
