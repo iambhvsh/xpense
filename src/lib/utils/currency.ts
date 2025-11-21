@@ -38,18 +38,49 @@ export const getCurrencySymbol = (): string => {
   return symbols[currency] || '$';
 };
 
+// Memoization cache for formatted values
+const formatCache = new Map<string, string>();
+const MAX_CACHE_SIZE = 500;
+
 export const formatCurrency = (amount: number): string => {
+  const cacheKey = `${currencyCache || 'USD'}_${amount}`;
+  
+  // Check cache first
+  if (formatCache.has(cacheKey)) {
+    return formatCache.get(cacheKey)!;
+  }
+  
   const symbol = getCurrencySymbol();
   const formatted = Math.abs(amount).toLocaleString('en-US', {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   });
   
-  return `${symbol}${formatted}`;
+  const result = `${symbol}${formatted}`;
+  
+  // Add to cache with size limit
+  if (formatCache.size >= MAX_CACHE_SIZE) {
+    const firstKey = formatCache.keys().next().value;
+    formatCache.delete(firstKey);
+  }
+  formatCache.set(cacheKey, result);
+  
+  return result;
 };
+
+// Memoization cache for date formatting
+const dateCache = new Map<string, string>();
+const MAX_DATE_CACHE_SIZE = 200;
 
 export const formatDate = (dateString: string): string => {
   const format = dateFormatCache || 'MM/DD/YYYY';
+  const cacheKey = `${format}_${dateString}`;
+  
+  // Check cache first
+  if (dateCache.has(cacheKey)) {
+    return dateCache.get(cacheKey)!;
+  }
+  
   const date = new Date(dateString);
   
   const day = date.getDate().toString().padStart(2, '0');
@@ -59,17 +90,31 @@ export const formatDate = (dateString: string): string => {
   const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const monthShort = monthNames[date.getMonth()];
   
+  let result: string;
   switch (format) {
     case 'DD/MM/YYYY':
-      return `${day}/${month}/${year}`;
+      result = `${day}/${month}/${year}`;
+      break;
     case 'YYYY-MM-DD':
-      return `${year}-${month}-${day}`;
+      result = `${year}-${month}-${day}`;
+      break;
     case 'DD.MM.YYYY':
-      return `${day}.${month}.${year}`;
+      result = `${day}.${month}.${year}`;
+      break;
     case 'MMM DD, YYYY':
-      return `${monthShort} ${day}, ${year}`;
+      result = `${monthShort} ${day}, ${year}`;
+      break;
     case 'MM/DD/YYYY':
     default:
-      return `${month}/${day}/${year}`;
+      result = `${month}/${day}/${year}`;
   }
+  
+  // Add to cache with size limit
+  if (dateCache.size >= MAX_DATE_CACHE_SIZE) {
+    const firstKey = dateCache.keys().next().value;
+    dateCache.delete(firstKey);
+  }
+  dateCache.set(cacheKey, result);
+  
+  return result;
 };

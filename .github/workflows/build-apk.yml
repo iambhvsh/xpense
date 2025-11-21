@@ -19,11 +19,38 @@ jobs:
           node-version: 20
           cache: 'npm'
 
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
       - name: Install dependencies
         run: npm ci
 
-      - name: Build web assets
+      - name: Cache Vite build
+        uses: actions/cache@v4
+        with:
+          path: |
+            dist
+            node_modules/.vite
+          key: ${{ runner.os }}-vite-${{ hashFiles('src/**/*', 'index.html', 'vite.config.ts') }}
+          restore-keys: |
+            ${{ runner.os }}-vite-
+
+      - name: Build web assets (optimized with gzip compression)
         run: npm run build
+        env:
+          NODE_ENV: production
+
+      - name: Remove existing Android platform
+        run: |
+          if [ -d "android" ]; then
+            echo "🗑️ Removing existing android directory"
+            rm -rf android
+          fi
 
       - name: Add Android platform
         run: npx cap add android
@@ -34,12 +61,28 @@ jobs:
       - name: Sync Capacitor
         run: npx cap sync android
 
+      - name: Add Android Permissions to Manifest
+        run: |
+          MANIFEST_PATH="android/app/src/main/AndroidManifest.xml"
+          
+          # Check if permissions already exist
+          if ! grep -q "READ_MEDIA_IMAGES" "$MANIFEST_PATH"; then
+            # Add permissions before </manifest> tag
+            sed -i '/<\/manifest>/i \    <!-- Permissions for Receipt Scanning and CSV Export -->\n    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />\n    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />\n    <uses-permission android:name="android.permission.CAMERA" />\n    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />\n' "$MANIFEST_PATH"
+            echo "✅ Permissions added to AndroidManifest.xml"
+          else
+            echo "✅ Permissions already exist in AndroidManifest.xml"
+          fi
+          
+          # Verify the changes
+          echo "📄 Current permissions in manifest:"
+          grep "uses-permission" "$MANIFEST_PATH" || echo "No permissions found"
+
       - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 21
-          cache: 'gradle'
 
       - name: Cache Gradle packages
         uses: actions/cache@v4
@@ -47,18 +90,10 @@ jobs:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+            ~/.android/build-cache
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', 'android/gradle.properties') }}
           restore-keys: |
             ${{ runner.os }}-gradle-
-
-      - name: Cache Android SDK
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.android/sdk
-          key: ${{ runner.os }}-android-sdk
-          restore-keys: |
-            ${{ runner.os }}-android-sdk-
 
       - name: Grant execution permission to Gradle
         run: chmod +x android/gradlew
@@ -66,9 +101,55 @@ jobs:
       - name: Download Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Generate Temporary Keystore
+      - name: Cache Android SDK
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.android/sdk
+            ~/Android/Sdk
+          key: ${{ runner.os }}-android-sdk-${{ hashFiles('android/build.gradle', 'android/app/build.gradle') }}
+          restore-keys: |
+            ${{ runner.os }}-android-sdk-
+
+      - name: Setup Keystore
         run: |
-          keytool -genkey -v -keystore android/app/release.keystore -alias xpense -keyalg RSA -keysize 2048 -validity 10000 -storepass xpense123 -keypass xpense123 -dname "CN=Xpense, OU=Development, O=Xpense, L=City, S=State, C=US"
+          KEYSTORE_PATH="android/app/xpense-release.keystore"
+          
+          # Check if keystore exists in secrets
+          if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
+            echo "🔑 Using existing keystore from secrets"
+            echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > "$KEYSTORE_PATH"
+          else
+            echo "⚠️ No keystore found in secrets. Generating new keystore..."
+            echo "⚠️ IMPORTANT: After this build, you MUST save the keystore to GitHub Secrets!"
+            echo ""
+            
+            # Generate a production-grade keystore
+            keytool -genkeypair \
+              -v \
+              -keystore "$KEYSTORE_PATH" \
+              -alias xpense \
+              -keyalg RSA \
+              -keysize 4096 \
+              -validity 10000 \
+              -storepass "${{ secrets.KEYSTORE_PASSWORD || 'Xp3ns3!2025#SecureKey@' }}" \
+              -keypass "${{ secrets.KEY_PASSWORD || 'Xp3ns3!2025#SecureKey@' }}" \
+              -dname "CN=Xpense, OU=Mobile, O=XpenseApp, L=Aurangabad, ST=Maharashtra, C=IN"
+            
+            echo ""
+            echo "📦 Keystore generated. To save it for future builds, run:"
+            echo "base64 $KEYSTORE_PATH | pbcopy"
+            echo "Then add it to GitHub Secrets as KEYSTORE_BASE64"
+          fi
+          
+          # Verify keystore
+          if [ -f "$KEYSTORE_PATH" ]; then
+            echo "✅ Keystore ready at $KEYSTORE_PATH"
+            ls -lh "$KEYSTORE_PATH"
+          else
+            echo "❌ Keystore creation failed"
+            exit 1
+          fi
 
       - name: Configure Signing in build.gradle
         run: |
@@ -76,30 +157,45 @@ jobs:
           
           android.signingConfigs {
               release {
-                  storeFile file('release.keystore')
-                  storePassword 'xpense123'
+                  storeFile file('xpense-release.keystore')
+                  storePassword System.getenv('KEYSTORE_PASSWORD') ?: 'Xp3ns3!2025#SecureKey@'
                   keyAlias 'xpense'
-                  keyPassword 'xpense123'
+                  keyPassword System.getenv('KEY_PASSWORD') ?: 'Xp3ns3!2025#SecureKey@'
               }
           }
           
           android.buildTypes.release.signingConfig android.signingConfigs.release
           EOF
 
-      - name: Build Release APK
+      - name: Build Release APK (optimized)
         working-directory: android
-        run: ./gradlew assembleRelease --no-daemon
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD || 'Xp3ns3!2025#SecureKey@' }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || 'Xp3ns3!2025#SecureKey@' }}
+        run: ./gradlew assembleRelease --no-daemon --parallel --build-cache --configuration-cache
 
       - name: List and verify APK
         run: |
-          echo "Listing all APK files:"
+          echo "📦 Listing all APK files:"
           find android/app/build/outputs -name "*.apk" -type f
           echo ""
-          echo "Detailed listing:"
+          echo "📄 Detailed listing:"
           ls -laR android/app/build/outputs/apk/ || echo "No apk directory found"
+          echo ""
+          echo "📊 APK size:"
+          du -h android/app/build/outputs/apk/release/*.apk
 
       - name: Upload Release APK
         uses: actions/upload-artifact@v4
         with:
-          name: xpense-release
+          name: xpense-release-${{ github.sha }}
           path: android/app/build/outputs/apk/release/*.apk
+          retention-days: 30
+
+      - name: Upload Keystore (First Build Only)
+        if: ${{ !secrets.KEYSTORE_BASE64 }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: keystore-backup-${{ github.sha }}
+          path: android/app/xpense-release.keystore
+          retention-days: 1

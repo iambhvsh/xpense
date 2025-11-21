@@ -3,15 +3,15 @@ import { DEFAULT_CATEGORY_RECORDS } from '../constants';
 
 // Database Tables Interfaces
 export interface TransactionRecord {
-  id?: number; // auto-increment
+  id?: number;
   amount: number;
   category: string;
   description: string;
   note: string;
-  date: string; // ISO string
-  isExpense: boolean; // true for expense, false for income
-  createdAt: string; // ISO string
-  updatedAt: string; // ISO string
+  date: string;
+  isExpense: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface CategoryRecord {
@@ -63,13 +63,14 @@ class XpenseDatabase extends Dexie {
       recurringExpenses: '++id, nextRun, frequency',
       settings: 'key'
     }).upgrade(async (trans) => {
-      // Migrate existing transactions to have isExpense field
+      // Migrate existing transactions - default all to expense
+      // User can manually change if needed
       const transactions = await trans.table('transactions').toArray();
-      for (const transaction of transactions) {
-        // If category is empty or amount is positive, it's likely income
-        const isExpense = transaction.category !== '' && transaction.amount !== 0;
-        await trans.table('transactions').update(transaction.id, { isExpense });
-      }
+      const updates = transactions.map(t => ({
+        key: t.id,
+        changes: { isExpense: true }
+      }));
+      await trans.table('transactions').bulkUpdate(updates);
     });
   }
 }
@@ -99,57 +100,43 @@ function calculateNextRun(currentDate: Date, frequency: 'daily' | 'weekly' | 'mo
 // Create and export database instance
 export const db = new XpenseDatabase();
 
-async function seedMissingDefaultCategories(): Promise<void> {
+async function cleanupCategories(): Promise<void> {
   const existingCategories = await db.categories.toArray();
   
-  // Remove duplicates by keeping only the first occurrence of each category name
+  // Remove duplicates and Income category
   const seenNames = new Set<string>();
-  const duplicateIds: number[] = [];
-  const incomeIds: number[] = [];
+  const toDelete: number[] = [];
   
   for (const category of existingCategories) {
-    // Mark Income category for removal
-    if (category.name === 'Income' && category.id) {
-      incomeIds.push(category.id);
-      continue;
-    }
-    
-    if (seenNames.has(category.name)) {
-      // This is a duplicate, mark for deletion
-      if (category.id) {
-        duplicateIds.push(category.id);
-      }
+    if (category.name === 'Income' || seenNames.has(category.name)) {
+      if (category.id) toDelete.push(category.id);
     } else {
       seenNames.add(category.name);
     }
   }
   
-  // Delete Income categories
-  if (incomeIds.length > 0) {
-    await db.categories.bulkDelete(incomeIds);
-    console.log(`Removed ${incomeIds.length} Income categories`);
-  }
-  
-  // Delete duplicates
-  if (duplicateIds.length > 0) {
-    await db.categories.bulkDelete(duplicateIds);
-    console.log(`Removed ${duplicateIds.length} duplicate categories`);
+  if (toDelete.length > 0) {
+    await db.categories.bulkDelete(toDelete);
   }
 }
 
 // Initialize database with default data
 export async function initializeDatabase(): Promise<void> {
   try {
-    // Check if already initialized to prevent multiple seeding
     const isInitialized = await db.settings.get('db-initialized');
     
     if (!isInitialized) {
-      // First time initialization - seed default categories
+      // First time initialization
       await db.categories.bulkAdd(DEFAULT_CATEGORY_RECORDS);
       await db.settings.put({ key: 'db-initialized', value: true });
+      await db.settings.put({ key: 'db-cleaned', value: true });
     } else {
-      // Already initialized - just clean up any duplicates that might exist
-      await seedMissingDefaultCategories();
+      // Only run cleanup once
+      const isCleaned = await db.settings.get('db-cleaned');
+      if (!isCleaned) {
+        await cleanupCategories();
+        await db.settings.put({ key: 'db-cleaned', value: true });
+      }
     }
   } catch (error) {
     console.error('Database initialization failed:', error);
@@ -282,7 +269,7 @@ export const dbHelpers = {
   async exportToCSV(): Promise<string> {
     const { exportToCSV } = await import('../utils/csv');
     const transactions = await db.transactions.toArray();
-    return exportToCSV(transactions);
+    return await exportToCSV(transactions);
   },
 
   async importFromCSV(csvContent: string): Promise<{ 
@@ -290,17 +277,14 @@ export const dbHelpers = {
     errors: number; 
     newCategories: string[] 
   }> {
-    const { parseCSV, validateCSVData } = await import('../utils/csv');
-    
-    // Parse CSV
-    const rows = parseCSV(csvContent);
+    const { parseAndValidateCSV } = await import('../utils/csv');
     
     // Get existing categories
     const existingCategories = await db.categories.toArray();
     const categoryNames = existingCategories.map(c => c.name);
     
-    // Validate data
-    const validation = validateCSVData(rows, categoryNames);
+    // Parse and validate in worker
+    const validation = await parseAndValidateCSV(csvContent, categoryNames);
     
     // Add new categories
     if (validation.newCategories.length > 0) {

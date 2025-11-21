@@ -18,9 +18,9 @@ export const BudgetOverview: React.FC<BudgetOverviewProps> = ({ summary }) => {
   const isOverBudget = percentage >= 100;
 
   return (
-    <div className="bg-[#1C1C1E] md:bg-white rounded-[28px] p-6 shadow-sm">
+    <div className="bg-[#1C1C1E] rounded-[28px] p-6 shadow-sm">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-[20px] font-bold text-white md:text-[#000000] tracking-[-0.41px]">
+        <h3 className="text-[20px] font-bold text-white tracking-[-0.41px]">
           Monthly Budget
         </h3>
         {warningLevel !== 'none' && (
@@ -44,7 +44,7 @@ export const BudgetOverview: React.FC<BudgetOverviewProps> = ({ summary }) => {
             {percentage.toFixed(0)}%
           </span>
         </div>
-        <div className="h-2 bg-[#2C2C2E] md:bg-[#E5E5EA] rounded-full overflow-hidden">
+        <div className="h-2 bg-[#2C2C2E] rounded-full overflow-hidden">
           <div 
             className="h-full rounded-full transition-all duration-300"
             style={{ 
@@ -67,7 +67,7 @@ export const BudgetOverview: React.FC<BudgetOverviewProps> = ({ summary }) => {
 
       {/* Category Breakdown */}
       {summary.categoryBreakdown.length > 0 && (
-        <div className="mt-4 pt-4 border-t border-[#38383A] md:border-[#C6C6C8] space-y-2">
+        <div className="mt-4 pt-4 border-t border-[#38383A] space-y-2">
           {summary.categoryBreakdown
             .filter(cat => cat.warningLevel !== 'none')
             .slice(0, 3)
@@ -78,7 +78,7 @@ export const BudgetOverview: React.FC<BudgetOverviewProps> = ({ summary }) => {
                     className="w-2 h-2 rounded-full"
                     style={{ backgroundColor: getWarningColor(cat.warningLevel) }}
                   />
-                  <span className="text-[13px] text-white md:text-[#000000] tracking-[-0.08px]">
+                  <span className="text-[13px] text-white tracking-[-0.08px]">
                     {cat.categoryName}
                   </span>
                 </div>

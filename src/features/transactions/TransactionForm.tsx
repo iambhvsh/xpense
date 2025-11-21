@@ -1,14 +1,15 @@
 import React, { useState, useRef } from 'react';
-import { Transaction } from '@/lib/types';
-import { analyzeReceipt } from '@/lib/services/gemini';
+import { TransactionRecord } from '@/lib/db';
+import { analyzeReceipt } from '@/lib/api/gemini';
 import { ScanLine } from 'lucide-react';
 import { Spinner } from '@/components/ui/Spinner';
 import { getCurrencySymbol } from '@/lib/utils/currency';
-import { useCategories } from '@/lib/hooks/useDatabase';
-import { useAlert } from '@/components/context/AlertProvider';
+import { useCategories } from '@/hooks/useDatabase';
+import { useAlert } from '@/components/ui/AlertProvider';
+import { haptics, isNativePlatform } from '@/lib/utils/native';
 
 interface ExpenseFormProps {
-  onAddTransaction: (t: Omit<Transaction, 'id'>) => void;
+  onAddTransaction: (t: Omit<TransactionRecord, 'id' | 'createdAt' | 'updatedAt'>) => void;
   onClose: () => void;
 }
 
@@ -34,20 +35,22 @@ export const TransactionForm: React.FC<ExpenseFormProps> = ({ onAddTransaction, 
     }
   }, [categories, category]);
 
-  // Auto-resize textarea with character limit
-  const handleNoteChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+  // Auto-resize textarea with character limit (debounced for performance)
+  const handleNoteChange = React.useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value;
     
     // Limit to 250 characters
     if (value.length <= 250) {
       setNote(value);
       
-      // Auto-resize
-      const textarea = e.target;
-      textarea.style.height = 'auto';
-      textarea.style.height = textarea.scrollHeight + 'px';
+      // Auto-resize using RAF for smooth performance
+      requestAnimationFrame(() => {
+        const textarea = e.target;
+        textarea.style.height = 'auto';
+        textarea.style.height = textarea.scrollHeight + 'px';
+      });
     }
-  };
+  }, []);
 
   const canSubmit = amount.trim() !== '' && description.trim() !== '';
 
@@ -64,6 +67,9 @@ export const TransactionForm: React.FC<ExpenseFormProps> = ({ onAddTransaction, 
     if (!canSubmit) {
       return;
     }
+    if (isNativePlatform()) {
+      haptics.success();
+    }
     onAddTransaction(buildTransactionPayload());
     onClose();
   };
@@ -79,7 +85,16 @@ export const TransactionForm: React.FC<ExpenseFormProps> = ({ onAddTransaction, 
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file || isScanning) return;
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      showAlert({
+        title: 'File Too Large',
+        message: 'Please select an image smaller than 5MB.'
+      });
+      return;
+    }
 
     setIsScanning(true);
     try {
@@ -89,7 +104,15 @@ export const TransactionForm: React.FC<ExpenseFormProps> = ({ onAddTransaction, 
         const base64Data = base64String.split(',')[1];
         
         try {
-          const receiptData = await analyzeReceipt(base64Data, file.type);
+          const timeoutPromise = new Promise<never>((_, reject) => 
+            setTimeout(() => reject(new Error('Scan timeout')), 30000)
+          );
+          
+          const receiptData = await Promise.race([
+            analyzeReceipt(base64Data, file.type),
+            timeoutPromise
+          ]);
+          
           if (receiptData.total) setAmount(receiptData.total.toString());
           if (receiptData.merchant) setDescription(receiptData.merchant);
           if (receiptData.date) setDate(receiptData.date);
@@ -98,7 +121,9 @@ export const TransactionForm: React.FC<ExpenseFormProps> = ({ onAddTransaction, 
         } catch (err) {
           showAlert({
             title: 'Scan Failed',
-            message: 'Could not analyze receipt. Please try again.'
+            message: err instanceof Error && err.message === 'Scan timeout' 
+              ? 'Scan took too long. Please try again.'
+              : 'Could not analyze receipt. Please try again.'
           });
         } finally {
           setIsScanning(false);
@@ -136,7 +161,10 @@ export const TransactionForm: React.FC<ExpenseFormProps> = ({ onAddTransaction, 
             </div>
             <button 
                type="button"
-               onClick={() => fileInputRef.current?.click()}
+               onClick={() => {
+                 if (isNativePlatform()) haptics.medium();
+                 fileInputRef.current?.click();
+               }}
                className="mt-10 flex items-center gap-2.5 px-7 py-4 bg-[#1C1C1E] rounded-full text-ios-blue text-[17px] font-semibold shadow-sm active:opacity-60 transition-opacity"
             >
               {isScanning ? <Spinner className="w-4 h-4" /> : <ScanLine size={20} strokeWidth={2.5} />}
@@ -160,7 +188,10 @@ export const TransactionForm: React.FC<ExpenseFormProps> = ({ onAddTransaction, 
               <div className="bg-[#2C2C2E] p-[2px] rounded-[10px] flex h-[38px]">
                   <button
                     type="button"
-                    onClick={() => setIsExpense(true)}
+                    onClick={() => {
+                      if (isNativePlatform()) haptics.light();
+                      setIsExpense(true);
+                    }}
                     className={`flex-1 text-[15px] font-semibold rounded-[8px] transition-all tracking-[-0.08px] ${
                       isExpense ? 'bg-[#3A3A3C] text-white shadow-sm' : 'bg-transparent text-[#8E8E93]'
                     }`}
@@ -169,7 +200,10 @@ export const TransactionForm: React.FC<ExpenseFormProps> = ({ onAddTransaction, 
                   </button>
                   <button
                     type="button"
-                    onClick={() => setIsExpense(false)}
+                    onClick={() => {
+                      if (isNativePlatform()) haptics.light();
+                      setIsExpense(false);
+                    }}
                     className={`flex-1 text-[15px] font-semibold rounded-[8px] transition-all tracking-[-0.08px] ${
                       !isExpense ? 'bg-[#3A3A3C] text-white shadow-sm' : 'bg-transparent text-[#8E8E93]'
                     }`}
@@ -201,12 +235,15 @@ export const TransactionForm: React.FC<ExpenseFormProps> = ({ onAddTransaction, 
                  <label className="w-24 text-white text-[17px] tracking-[-0.41px]">Category</label>
                  {categoriesLoading ? (
                    <div className="flex-1 flex justify-end py-3">
-                     <Spinner className="w-4 h-4 text-ios-blue" />
+                     <Spinner className="w-4 h-4 text-[#8E8E93]" />
                    </div>
                  ) : (
                    <select
                      value={category}
-                     onChange={(e) => setCategory(e.target.value)}
+                     onChange={(e) => {
+                       if (isNativePlatform()) haptics.selection();
+                       setCategory(e.target.value);
+                     }}
                      className="flex-1 bg-transparent text-ios-blue text-[17px] text-right appearance-none cursor-pointer py-3 tracking-[-0.41px] outline-none border-none"
                      style={{ direction: 'rtl', WebkitAppearance: 'none' }}
                    >

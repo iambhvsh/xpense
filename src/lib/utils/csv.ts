@@ -1,261 +1,128 @@
 import { TransactionRecord } from '../db';
 
 /**
- * CSV Import/Export Utilities
- * Handles CSV parsing, validation, and generation for transactions
+ * CSV Import/Export Utilities - Web Worker Edition
+ * Offloads CSV processing to prevent main thread blocking
  */
-
-export interface CSVRow {
-  amount: string;
-  category: string;
-  description: string;
-  note: string;
-  date: string;
-  isExpense?: string;
-  createdAt?: string;
-  updatedAt?: string;
-}
 
 export interface CSVValidationResult {
   valid: TransactionRecord[];
-  errors: Array<{ row: number; error: string; data: CSVRow }>;
+  errors: Array<{ row: number; error: string }>;
   newCategories: string[];
 }
 
-// CSV Headers
-const CSV_HEADERS = ['amount', 'category', 'description', 'note', 'date', 'isExpense', 'createdAt', 'updatedAt'];
+// Worker instance (lazy loaded)
+let csvWorker: Worker | null = null;
+
+function getWorker(): Worker {
+  if (!csvWorker) {
+    csvWorker = new Worker(new URL('../../workers/csv.worker.ts', import.meta.url), {
+      type: 'module'
+    });
+  }
+  return csvWorker;
+}
 
 /**
- * Export transactions to CSV string
+ * Export transactions to CSV string (using Web Worker)
  */
-export function exportToCSV(transactions: TransactionRecord[]): string {
-  // Create header row
-  const header = CSV_HEADERS.join(',');
-  
-  // Create data rows
-  const rows = transactions.map(t => {
-    return [
-      t.amount,
-      escapeCSVField(t.category),
-      escapeCSVField(t.description),
-      escapeCSVField(t.note),
-      t.date,
-      t.isExpense,
-      t.createdAt,
-      t.updatedAt
-    ].join(',');
+export function exportToCSV(transactions: TransactionRecord[]): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const worker = getWorker();
+    
+    const handleMessage = (e: MessageEvent) => {
+      worker.removeEventListener('message', handleMessage);
+      
+      if (e.data.type === 'success') {
+        resolve(e.data.data);
+      } else {
+        reject(new Error(e.data.error));
+      }
+    };
+    
+    worker.addEventListener('message', handleMessage);
+    worker.postMessage({
+      type: 'export',
+      data: { transactions }
+    });
   });
-  
-  return [header, ...rows].join('\n');
 }
 
 /**
  * Download CSV file
  */
-export function downloadCSV(csvContent: string, filename: string = 'xpense-transactions.csv'): void {
+export async function downloadCSV(csvContent: string, filename = 'xpense-transactions.csv'): Promise<void> {
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  
+  // Try modern File System Access API first (works on Android Chrome)
+  if ('showSaveFilePicker' in window) {
+    try {
+      const handle = await (window as any).showSaveFilePicker({
+        suggestedName: filename,
+        types: [{
+          description: 'CSV File',
+          accept: { 'text/csv': ['.csv'] }
+        }]
+      });
+      
+      const writable = await handle.createWritable();
+      await writable.write(blob);
+      await writable.close();
+      return;
+    } catch (error) {
+      // User cancelled or API not supported, fall through to download
+      if ((error as Error).name !== 'AbortError') {
+        console.warn('File System Access API failed:', error);
+      }
+    }
+  }
+  
+  // Fallback: Standard download (works on most browsers)
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
   link.download = filename;
+  link.style.display = 'none';
+  document.body.appendChild(link);
   link.click();
-  URL.revokeObjectURL(url);
+  document.body.removeChild(link);
+  
+  // Clean up after a delay to ensure download starts
+  setTimeout(() => URL.revokeObjectURL(url), 100);
 }
 
 /**
- * Parse CSV string to rows
+ * Parse and validate CSV (using Web Worker)
  */
-export function parseCSV(csvContent: string): CSVRow[] {
-  const lines = csvContent.trim().split('\n');
-  
-  if (lines.length < 2) {
-    throw new Error('CSV file is empty or has no data rows');
-  }
-  
-  // Parse header
-  const header = lines[0].split(',').map(h => h.trim().toLowerCase());
-  
-  // Validate header
-  const requiredHeaders = ['amount', 'category', 'description', 'date'];
-  const missingHeaders = requiredHeaders.filter(h => !header.includes(h));
-  
-  if (missingHeaders.length > 0) {
-    throw new Error(`Missing required columns: ${missingHeaders.join(', ')}`);
-  }
-  
-  // Parse data rows
-  const rows: CSVRow[] = [];
-  
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i].trim();
-    if (!line) continue; // Skip empty lines
-    
-    const values = parseCSVLine(line);
-    
-    if (values.length !== header.length) {
-      throw new Error(`Row ${i + 1}: Column count mismatch (expected ${header.length}, got ${values.length})`);
-    }
-    
-    const row: any = {};
-    header.forEach((key, index) => {
-      row[key] = values[index];
-    });
-    
-    rows.push(row as CSVRow);
-  }
-  
-  return rows;
-}
-
-/**
- * Parse a single CSV line handling quoted fields
- */
-function parseCSVLine(line: string): string[] {
-  const result: string[] = [];
-  let current = '';
-  let inQuotes = false;
-  
-  for (let i = 0; i < line.length; i++) {
-    const char = line[i];
-    const nextChar = line[i + 1];
-    
-    if (char === '"') {
-      if (inQuotes && nextChar === '"') {
-        // Escaped quote
-        current += '"';
-        i++; // Skip next quote
-      } else {
-        // Toggle quote state
-        inQuotes = !inQuotes;
-      }
-    } else if (char === ',' && !inQuotes) {
-      // End of field
-      result.push(current.trim());
-      current = '';
-    } else {
-      current += char;
-    }
-  }
-  
-  // Add last field
-  result.push(current.trim());
-  
-  return result;
-}
-
-/**
- * Escape CSV field (add quotes if needed)
- */
-function escapeCSVField(field: string): string {
-  const needsQuotes = field.includes(',') || field.includes('"') || field.includes('\n');
-  
-  if (needsQuotes) {
-    // Escape quotes by doubling them
-    const escaped = field.replace(/"/g, '""');
-    return `"${escaped}"`;
-  }
-  
-  return field;
-}
-
-/**
- * Validate and convert CSV rows to TransactionRecords
- */
-export function validateCSVData(
-  rows: CSVRow[],
+export function parseAndValidateCSV(
+  csvContent: string,
   existingCategories: string[]
-): CSVValidationResult {
-  const valid: TransactionRecord[] = [];
-  const errors: Array<{ row: number; error: string; data: CSVRow }> = [];
-  const newCategoriesSet = new Set<string>();
-  
-  rows.forEach((row, index) => {
-    const rowNumber = index + 2; // +2 because of header and 0-index
+): Promise<CSVValidationResult> {
+  return new Promise((resolve, reject) => {
+    const worker = getWorker();
     
-    try {
-      // Validate amount
-      const amount = parseFloat(row.amount);
-      if (isNaN(amount)) {
-        throw new Error('Invalid amount (must be a number)');
-      }
+    const handleMessage = (e: MessageEvent) => {
+      worker.removeEventListener('message', handleMessage);
       
-      // Validate category
-      if (!row.category || row.category.trim() === '') {
-        throw new Error('Category is required');
-      }
-      const category = row.category.trim();
-      
-      // Track new categories
-      if (!existingCategories.includes(category)) {
-        newCategoriesSet.add(category);
-      }
-      
-      // Validate description
-      if (!row.description || row.description.trim() === '') {
-        throw new Error('Description is required');
-      }
-      const description = row.description.trim();
-      
-      // Note is optional
-      const note = row.note ? row.note.trim() : '';
-      
-      // Validate date
-      const date = new Date(row.date);
-      if (isNaN(date.getTime())) {
-        throw new Error('Invalid date format (use ISO format: YYYY-MM-DD)');
-      }
-      
-      // Validate isExpense (default to true if not provided or if category exists)
-      let isExpense = true;
-      if (row.isExpense !== undefined) {
-        const isExpenseStr = row.isExpense.toLowerCase();
-        isExpense = isExpenseStr === 'true' || isExpenseStr === '1' || isExpenseStr === 'yes';
+      if (e.data.type === 'success') {
+        resolve(e.data.data);
       } else {
-        // If not provided, infer: if category is empty, it's income
-        isExpense = category !== '';
+        reject(new Error(e.data.error));
       }
-      
-      // Use provided timestamps or generate new ones
-      const now = new Date().toISOString();
-      const createdAt = row.createdAt && !isNaN(new Date(row.createdAt).getTime()) 
-        ? row.createdAt 
-        : now;
-      const updatedAt = row.updatedAt && !isNaN(new Date(row.updatedAt).getTime()) 
-        ? row.updatedAt 
-        : now;
-      
-      // Create valid transaction record
-      valid.push({
-        amount,
-        category,
-        description,
-        note,
-        date: date.toISOString(),
-        isExpense,
-        createdAt,
-        updatedAt
-      });
-      
-    } catch (error) {
-      errors.push({
-        row: rowNumber,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        data: row
-      });
-    }
+    };
+    
+    worker.addEventListener('message', handleMessage);
+    worker.postMessage({
+      type: 'parse',
+      data: { csvContent, existingCategories }
+    });
   });
-  
-  return {
-    valid,
-    errors,
-    newCategories: Array.from(newCategoriesSet)
-  };
 }
 
 /**
  * Format validation errors for display
  */
-export function formatValidationErrors(errors: CSVValidationResult['errors']): string {
+export function formatValidationErrors(errors: Array<{ row: number; error: string }>): string {
   if (errors.length === 0) return '';
   
   const errorMessages = errors.slice(0, 5).map(e => 
@@ -267,4 +134,14 @@ export function formatValidationErrors(errors: CSVValidationResult['errors']): s
   }
   
   return errorMessages.join('\n');
+}
+
+/**
+ * Cleanup worker when done
+ */
+export function cleanupWorker(): void {
+  if (csvWorker) {
+    csvWorker.terminate();
+    csvWorker = null;
+  }
 }

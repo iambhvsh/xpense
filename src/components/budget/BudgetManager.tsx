@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Pencil, Check, X } from 'lucide-react';
-import { useCategories } from '@/lib/hooks/useDatabase';
+import { useCategories } from '@/hooks/useDatabase';
 import { db } from '@/lib/db';
-import { useAlert } from '@/components/context/AlertProvider';
+import { useAlert } from '@/components/ui/AlertProvider';
 
 export const BudgetManager: React.FC = () => {
   const { categories, isLoading } = useCategories();
@@ -42,9 +42,9 @@ export const BudgetManager: React.FC = () => {
   }
 
   return (
-    <div className="bg-[#1C1C1E] md:bg-white rounded-[28px] overflow-hidden shadow-sm">
-      <div className="px-6 py-4 border-b border-[#38383A] md:border-[#C6C6C8]">
-        <h3 className="text-[20px] font-bold text-white md:text-[#000000] tracking-[-0.41px]">
+    <div className="bg-[#1C1C1E] rounded-[28px] overflow-hidden shadow-sm">
+      <div className="px-6 py-4 border-b border-[#38383A]">
+        <h3 className="text-[20px] font-bold text-white tracking-[-0.41px]">
           Set Category Budgets
         </h3>
         <p className="text-[13px] text-[#8E8E93] tracking-[-0.08px] mt-1">
@@ -52,24 +52,24 @@ export const BudgetManager: React.FC = () => {
         </p>
       </div>
 
-      <div className="divide-y divide-[#38383A] md:divide-[#C6C6C8]">
+      <div className="divide-y divide-[#38383A]">
         {categories.map((category) => (
           <div key={category.id} className="px-6 py-4">
             {editingId === category.id ? (
               // Edit Mode
               <div className="space-y-3">
-                <div className="text-[17px] font-semibold text-white md:text-[#000000] tracking-[-0.41px]">
+                <div className="text-[17px] font-semibold text-white tracking-[-0.41px]">
                   {category.name}
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="flex-1 relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white md:text-[#000000] text-[15px]">$</span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white text-[15px]">$</span>
                     <input
                       type="number"
                       value={editingBudget}
                       onChange={(e) => setEditingBudget(e.target.value)}
                       placeholder="0"
-                      className="w-full bg-[#2C2C2E] md:bg-[#F5F5F7] text-white md:text-[#000000] pl-8 pr-3 py-2.5 rounded-[10px] text-[15px] tracking-[-0.24px] outline-none placeholder-[#8E8E93]"
+                      className="w-full bg-[#2C2C2E] text-white pl-8 pr-3 py-2.5 rounded-[10px] text-[15px] tracking-[-0.24px] outline-none placeholder-[#8E8E93]"
                       autoFocus
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') handleSave(category.id!);
@@ -98,7 +98,7 @@ export const BudgetManager: React.FC = () => {
               // View Mode
               <div className="flex items-center justify-between">
                 <div className="flex-1">
-                  <div className="text-[17px] font-semibold text-white md:text-[#000000] tracking-[-0.41px]">
+                  <div className="text-[17px] font-semibold text-white tracking-[-0.41px]">
                     {category.name}
                   </div>
                   {category.monthlyBudget ? (

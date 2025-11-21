@@ -3,14 +3,14 @@
   <head>
     <meta charset="UTF-8" />
     
-    <!-- iOS Viewport Configuration -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <!-- Responsive Viewport Configuration for Mobile and Tablets -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, shrink-to-fit=no" />
     
     <!-- Web App Capable -->
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <meta name="apple-mobile-web-app-title" content="xpense" />
+    <meta name="apple-mobile-web-app-title" content="Xpense" />
     
     <!-- iOS Theme Color -->
     <meta name="theme-color" content="#000000" />
@@ -19,14 +19,40 @@
     <!-- Disable automatic detection -->
     <meta name="format-detection" content="telephone=no" />
     
+    <!-- Performance Optimizations -->
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="renderer" content="webkit" />
+    
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="Xpense - Smart expense tracking and budget management app" />
+    <meta name="keywords" content="expense tracker, budget, finance, money management" />
+    <meta name="author" content="Xpense" />
+    
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="/assets/icon.png" />
     <link rel="apple-touch-icon" href="/assets/icon.png" />
     
-    <title>xpense</title>
+    <title>Xpense - Smart Expense Tracker</title>
+    
+    <style>
+      /* Critical CSS for faster initial render */
+      #root {
+        width: 100%;
+        height: 100%;
+        background-color: #000000;
+      }
+      
+      /* Prevent FOUC */
+      body {
+        margin: 0;
+        padding: 0;
+        background-color: #000000;
+        font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+    <script type="module" src="/src/app/main.tsx"></script>
   </body>
 </html>

@@ -1,15 +1,19 @@
-import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { App as CapacitorApp } from '@capacitor/app';
-import { Transaction } from './lib/types';
-import { useDatabaseInit } from './lib/hooks/useDatabase';
-import { useTransactions } from './lib/hooks/useDatabase';
-import { transactionRecordToTransaction, transactionToTransactionRecord } from './lib/db/adapters';
+import { StatusBar, Style } from '@capacitor/status-bar';
+import { Keyboard } from '@capacitor/keyboard';
+import { SplashScreen } from '@capacitor/splash-screen';
+import { TransactionRecord } from './lib/db';
+import { useDatabaseInit, useTransactions } from './lib/hooks/useDatabase';
 import { dbHelpers, seedDefaultCategories } from './lib/db';
+import { useAppStore } from './lib/store';
 import { AlertProvider } from './components/context/AlertProvider';
-import { Sidebar } from './components/layout/Sidebar';
+import { ErrorBoundary } from './lib/utils/errorBoundary';
+import { isNativePlatform, haptics } from './lib/utils/native';
 import { BottomTabBar } from './components/layout/BottomTabBar';
 import { PageHeader } from './components/layout/PageHeader';
 import { AddTransactionModal } from './components/layout/AddTransactionModal';
+import { Spinner } from './components/ui/Spinner';
 import { AppTab } from './app/constants/navigation';
 
 // Lazy load features
@@ -22,49 +26,64 @@ const SettingsPage = lazy(() => import('./features/settings/Settings').then(m =>
 const Onboarding = lazy(() => import('./features/onboarding/Onboarding').then(m => ({ default: m.Onboarding })));
 
 const App: React.FC = () => {
-  // Initialize database
   const { isInitialized } = useDatabaseInit();
-  
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [isClosingAddModal, setIsClosingAddModal] = useState(false);
   
-  // Get transactions from IndexedDB with live updates
   const { 
     transactions: dbTransactions, 
     addTransaction: addDbTransaction,
-    deleteTransaction: deleteDbTransaction,
-    isLoading: transactionsLoading
+    deleteTransaction: deleteDbTransaction
   } = useTransactions();
-
-  // Convert database records to Transaction format for compatibility
-  const transactions = dbTransactions.map(transactionRecordToTransaction);
   
-  const [activeTab, setActiveTab] = useState<AppTab>('overview');
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isClosing, setIsClosing] = useState(false);
-  const [isAnimating, setIsAnimating] = useState(false);
-  const animationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const isNavigatingRef = useRef(false);
-
-  // Check onboarding status and initialize caches from database
+  // Use Zustand store
+  const activeTab = useAppStore(state => state.activeTab) as AppTab;
+  const isAddModalOpen = useAppStore(state => state.isAddModalOpen);
+  const setActiveTab = useAppStore(state => state.setActiveTab);
+  const setIsAddModalOpen = useAppStore(state => state.setIsAddModalOpen);
+  const setTransactions = useAppStore(state => state.setTransactions);
+  
+  // Sync DB transactions to store
   useEffect(() => {
-    if (isInitialized) {
-      // Initialize currency cache
-      import('./lib/utils/currency').then(({ initializeCurrencyCache }) => {
-        initializeCurrencyCache();
-      });
-      
-      // Check onboarding status
-      dbHelpers.getSetting('xpense-onboarding-complete').then(completed => {
-        setShowOnboarding(!completed);
-      });
+    if (dbTransactions.length > 0) {
+      setTransactions(dbTransactions);
     }
+  }, [dbTransactions, setTransactions]);
+
+  // Initialize native features
+  useEffect(() => {
+    if (!isInitialized) return;
+
+    const initNative = async () => {
+      if (isNativePlatform()) {
+        try {
+          await StatusBar.setStyle({ style: Style.Dark });
+          await StatusBar.setBackgroundColor({ color: '#000000' });
+          await Keyboard.setAccessoryBarVisible({ isVisible: false });
+          await SplashScreen.hide({ fadeOutDuration: 300 });
+        } catch (e) {
+          // Silently fail
+        }
+      }
+    };
+
+    initNative();
+    
+    // Initialize currency cache
+    import('./lib/utils/currency').then(({ initializeCurrencyCache }) => {
+      initializeCurrencyCache();
+    });
+    
+    // Check onboarding
+    dbHelpers.getSetting('xpense-onboarding-complete').then(completed => {
+      setShowOnboarding(!completed);
+    });
   }, [isInitialized]);
 
-  // Initialize browser history for tab navigation
+  // Browser history navigation
   useEffect(() => {
     if (!isInitialized || showOnboarding) return;
 
-    // Get initial tab from URL hash or default to overview
     const hash = window.location.hash.slice(1) as AppTab;
     const validTabs: AppTab[] = ['overview', 'history', 'budget', 'settings'];
     const initialTab = validTabs.includes(hash) ? hash : 'overview';
@@ -73,32 +92,18 @@ const App: React.FC = () => {
       setActiveTab(initialTab);
     }
 
-    // If no hash, set initial hash
     if (!window.location.hash) {
       window.history.replaceState(null, '', '#overview');
     }
 
-    // Handle browser back/forward navigation
-    const handlePopState = (event: PopStateEvent) => {
-      // If modal is open and back is pressed, close the modal
-      if (isAddModalOpen && event.state?.modal === 'add-transaction') {
-        return; // Let the modal close naturally
-      }
-      
+    const handlePopState = () => {
       if (isAddModalOpen) {
-        // Close modal without going back in history
-        setIsClosing(true);
-        setTimeout(() => {
-          setIsAddModalOpen(false);
-          setIsClosing(false);
-        }, 300);
+        setIsAddModalOpen(false);
         return;
       }
       
-      if (isNavigatingRef.current) return;
-      
-      const hash = window.location.hash.slice(1) as AppTab;
-      const newTab = validTabs.includes(hash) ? hash : 'overview';
+      const newHash = window.location.hash.slice(1) as AppTab;
+      const newTab = validTabs.includes(newHash) ? newHash : 'overview';
       
       if (newTab !== activeTab) {
         setActiveTab(newTab);
@@ -107,78 +112,49 @@ const App: React.FC = () => {
 
     window.addEventListener('popstate', handlePopState);
 
-    window.addEventListener('popstate', handlePopState);
-
-    // Handle Android hardware back button via Capacitor
-    let backButtonListener: any = null;
-    
-    CapacitorApp.addListener('backButton', ({ canGoBack }) => {
-      // If modal is open, close it
+    // Android back button
+    const backButtonListener = CapacitorApp.addListener('backButton', ({ canGoBack }) => {
       if (isAddModalOpen) {
-        setIsClosing(true);
-        setTimeout(() => {
-          setIsAddModalOpen(false);
-          setIsClosing(false);
-        }, 300);
+        setIsAddModalOpen(false);
         return;
       }
 
-      // If not on overview tab, go back to overview
       if (activeTab !== 'overview') {
         window.history.back();
         return;
       }
 
-      // If on overview and can't go back, exit app
       if (!canGoBack) {
         CapacitorApp.exitApp();
       } else {
         window.history.back();
       }
-    }).then(listener => {
-      backButtonListener = listener;
     });
 
     return () => {
       window.removeEventListener('popstate', handlePopState);
-      if (backButtonListener) {
-        backButtonListener.remove();
-      }
+      backButtonListener.then(listener => listener.remove());
     };
   }, [isInitialized, showOnboarding, activeTab, isAddModalOpen]);
 
-  useEffect(() => {
-    // Cleanup timeout on unmount
-    return () => {
-      if (animationTimeoutRef.current) {
-        clearTimeout(animationTimeoutRef.current);
-      }
-    };
-  }, []);
-
-  const addTransaction = useCallback(async (t: Omit<Transaction, 'id'>) => {
-    const record = transactionToTransactionRecord(t);
-    await addDbTransaction(record);
+  const addTransaction = useCallback(async (t: Omit<TransactionRecord, 'id' | 'createdAt' | 'updatedAt'>) => {
+    await addDbTransaction(t);
   }, [addDbTransaction]);
 
-  const deleteTransaction = useCallback(async (id: string) => {
-    await deleteDbTransaction(parseInt(id));
+  const deleteTransaction = useCallback(async (id: number) => {
+    await deleteDbTransaction(id);
   }, [deleteDbTransaction]);
 
   const handleTabChange = useCallback((tab: AppTab) => {
     if (tab === activeTab) return;
     
-    isNavigatingRef.current = true;
+    if (isNativePlatform()) {
+      haptics.light();
+    }
+    
     setActiveTab(tab);
-    
-    // Update URL hash for browser history
     window.history.pushState(null, '', `#${tab}`);
-    
-    // Reset navigation flag after a short delay
-    setTimeout(() => {
-      isNavigatingRef.current = false;
-    }, 100);
-  }, [activeTab]);
+  }, [activeTab, setActiveTab]);
 
   const handleClearData = useCallback(async () => {
     await dbHelpers.clearAllData();
@@ -187,128 +163,33 @@ const App: React.FC = () => {
   }, [handleTabChange]);
 
   const handleOpenModal = useCallback(() => {
-    // Prevent opening if already animating
-    if (isAnimating) return;
-    
-    // Clear any pending timeout
-    if (animationTimeoutRef.current) {
-      clearTimeout(animationTimeoutRef.current);
+    if (isNativePlatform()) {
+      haptics.medium();
     }
-    
-    // Use RAF for smoother animation start
-    requestAnimationFrame(() => {
-      setIsAnimating(true);
-      setIsClosing(false);
-      setIsAddModalOpen(true);
-      
-      // Add modal state to history
-      window.history.pushState({ modal: 'add-transaction' }, '', window.location.href);
-      
-      // Reset animation lock after animation completes
-      animationTimeoutRef.current = setTimeout(() => {
-        setIsAnimating(false);
-      }, 300);
-    });
-  }, [isAnimating]);
+    setIsAddModalOpen(true);
+    window.history.pushState({ modal: 'add-transaction' }, '', window.location.href);
+  }, []);
 
   const handleCloseModal = useCallback(() => {
-    // Prevent closing if already animating
-    if (isAnimating) return;
-    
-    // Clear any pending timeout
-    if (animationTimeoutRef.current) {
-      clearTimeout(animationTimeoutRef.current);
+    if (isNativePlatform()) {
+      haptics.light();
     }
     
-    // Use RAF for smoother animation start
-    requestAnimationFrame(() => {
-      setIsAnimating(true);
-      setIsClosing(true);
-      
-      // Go back in history if modal was opened via history push
+    setIsClosingAddModal(true);
+    setTimeout(() => {
       if (window.history.state?.modal === 'add-transaction') {
         window.history.back();
       }
-      
-      animationTimeoutRef.current = setTimeout(() => {
-        setIsAddModalOpen(false);
-        setIsClosing(false);
-        setIsAnimating(false);
-      }, 300);
-    });
-  }, [isAnimating]);
-
-  // Show loading during initialization
-  const renderContent = () => (
-    <div
-      className="fixed inset-0 flex overflow-hidden"
-      data-modal-open={isAddModalOpen && !isClosing}
-      style={{
-        backgroundColor: isAddModalOpen && !isClosing ? '#1A1A1A' : '#000000',
-        transition: 'background-color 0.25s ease-out'
-      }}
-    >
-      <Sidebar
-        activeTab={activeTab}
-        onSelectTab={handleTabChange}
-        onAddTransaction={handleOpenModal}
-        dimmed={isAddModalOpen && !isClosing}
-      />
-
-      <main
-        className="flex-1 relative flex flex-col h-full overflow-hidden bg-[#000000] md:bg-white page-scalable"
-        data-scaled={isAddModalOpen && !isClosing}
-      >
-        <div className="flex-1 overflow-y-auto overscroll-contain no-scrollbar bg-[#000000] md:bg-white smooth-scroll">
-          <div
-            className="max-w-5xl mx-auto px-4 pt-2 md:px-8 md:pt-6 md:pb-8"
-            style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 90px)' }}
-          >
-            <PageHeader activeTab={activeTab} />
-            <Suspense
-              fallback={
-                <div className="flex items-center justify-center min-h-[200px]">
-                  <div className="w-8 h-8 border-3 border-ios-blue border-t-transparent rounded-full animate-spin" />
-                </div>
-              }
-            >
-              <div key={activeTab} className="min-h-[200px] animate-fade-in">
-                {activeTab === 'overview' && (
-                  <>
-                    <Dashboard transactions={transactions} />
-                    <div className="mt-6">
-                      <AiInsights transactions={transactions} />
-                    </div>
-                  </>
-                )}
-                {activeTab === 'history' && (
-                  <TransactionList transactions={transactions} onDelete={deleteTransaction} />
-                )}
-                {activeTab === 'budget' && <Budget />}
-                {activeTab === 'settings' && <SettingsPage onClearData={handleClearData} />}
-              </div>
-            </Suspense>
-          </div>
-        </div>
-      </main>
-
-      <BottomTabBar
-        activeTab={activeTab}
-        onSelectTab={handleTabChange}
-        onAddTransaction={handleOpenModal}
-      />
-
-      <AddTransactionModal open={isAddModalOpen} isClosing={isClosing} onClose={handleCloseModal}>
-        <TransactionForm onAddTransaction={addTransaction} onClose={handleCloseModal} />
-      </AddTransactionModal>
-    </div>
-  );
+      setIsAddModalOpen(false);
+      setIsClosingAddModal(false);
+    }, 350);
+  }, [setIsAddModalOpen]);
 
   if (!isInitialized) {
     return (
       <AlertProvider>
         <div className="fixed inset-0 bg-black flex items-center justify-center">
-          <div className="w-12 h-12 border-3 border-white border-t-transparent rounded-full animate-spin" />
+          <Spinner className="w-10 h-10 text-white" />
         </div>
       </AlertProvider>
     );
@@ -320,7 +201,7 @@ const App: React.FC = () => {
         <Suspense
           fallback={
             <div className="fixed inset-0 bg-black flex items-center justify-center">
-              <div className="w-8 h-8 border-3 border-white border-t-transparent rounded-full animate-spin" />
+              <Spinner className="w-10 h-10 text-white" />
             </div>
           }
         >
@@ -335,7 +216,57 @@ const App: React.FC = () => {
     );
   }
 
-  return <AlertProvider>{renderContent()}</AlertProvider>;
+  return (
+    <ErrorBoundary>
+      <AlertProvider>
+        <div className="fixed inset-0 flex overflow-hidden bg-[#000000]">
+        <main className="flex-1 relative flex flex-col h-full overflow-hidden bg-[#000000]">
+          <div className="flex-1 overflow-y-auto overscroll-contain no-scrollbar bg-[#000000] smooth-scroll">
+            <div
+              className="w-full max-w-[1024px] mx-auto px-4 md:px-6 pt-2"
+              style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 90px)' }}
+            >
+              <PageHeader activeTab={activeTab} />
+              <Suspense
+                fallback={
+                  <div className="flex items-center justify-center min-h-[200px]">
+                    <Spinner className="w-8 h-8 text-[#8E8E93]" />
+                  </div>
+                }
+              >
+                <div key={activeTab} className="min-h-[200px]">
+                  {activeTab === 'overview' && (
+                    <>
+                      <Dashboard transactions={dbTransactions} />
+                      <div className="mt-6">
+                        <AiInsights transactions={dbTransactions} />
+                      </div>
+                    </>
+                  )}
+                  {activeTab === 'history' && (
+                    <TransactionList transactions={dbTransactions} onDelete={deleteTransaction} />
+                  )}
+                  {activeTab === 'budget' && <Budget />}
+                  {activeTab === 'settings' && <SettingsPage onClearData={handleClearData} />}
+                </div>
+              </Suspense>
+            </div>
+          </div>
+        </main>
+
+        <BottomTabBar
+          activeTab={activeTab}
+          onSelectTab={handleTabChange}
+          onAddTransaction={handleOpenModal}
+        />
+
+        <AddTransactionModal open={isAddModalOpen} isClosing={isClosingAddModal} onClose={handleCloseModal}>
+          <TransactionForm onAddTransaction={addTransaction} onClose={handleCloseModal} />
+        </AddTransactionModal>
+      </div>
+    </AlertProvider>
+  </ErrorBoundary>
+  );
 };
 
 export default App;

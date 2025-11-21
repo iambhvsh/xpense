@@ -1,27 +1,37 @@
 import React, { useState, useMemo } from 'react';
 import { marked } from 'marked';
-import { generateInsights } from '@/lib/services/gemini';
-import { Transaction } from '@/lib/types';
+import { generateInsights } from '@/lib/api/gemini';
+import { TransactionRecord } from '@/lib/db';
 import { Sparkles } from 'lucide-react';
 import { Spinner } from '@/components/ui/Spinner';
 
 interface AiInsightsProps {
-  transactions: Transaction[];
+  transactions: TransactionRecord[];
 }
 
-export const AiInsights: React.FC<AiInsightsProps> = React.memo(({ transactions }) => {
+export const AiInsights: React.FC<AiInsightsProps> = ({ transactions }) => {
   const [advice, setAdvice] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const hasTransactions = transactions.length > 0;
 
   const handleGenerate = async () => {
-    if (!hasTransactions) return;
+    if (!hasTransactions || loading) return;
     
     setLoading(true);
     try {
-      const result = await generateInsights(transactions);
+      const timeoutPromise = new Promise<string>((_, reject) => 
+        setTimeout(() => reject(new Error('Request timeout')), 30000)
+      );
+      
+      const result = await Promise.race([
+        generateInsights(transactions),
+        timeoutPromise
+      ]);
+      
       setAdvice(result);
+    } catch (error) {
+      setAdvice('Unable to generate insights. Please try again later.');
     } finally {
       setLoading(false);
     }
@@ -69,11 +79,8 @@ export const AiInsights: React.FC<AiInsightsProps> = React.memo(({ transactions 
 
           <div className="mt-8 flex-1 flex flex-col justify-end">
             {loading ? (
-              <div className="h-full flex flex-col items-center justify-center space-y-5 min-h-[260px]">
-                <Spinner className="w-9 h-9 text-white" />
-                <p className="text-white/95 font-semibold text-[17px] animate-pulse tracking-[-0.41px]">
-                  Analyzing your spending...
-                </p>
+              <div className="h-full flex items-center justify-center min-h-[260px]">
+                <Spinner className="w-10 h-10 text-white" />
               </div>
             ) : advice ? (
               <div className="animate-fade-in">
@@ -128,4 +135,4 @@ export const AiInsights: React.FC<AiInsightsProps> = React.memo(({ transactions 
       </div>
     </div>
   );
-});
+};

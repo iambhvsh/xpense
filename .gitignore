@@ -32,3 +32,9 @@ ios/
 .env
 .env.local
 .env.*.local
+
+# Keystore files
+*.keystore
+*.jks
+keystore.txt
+KEYSTORE_INFO.txt

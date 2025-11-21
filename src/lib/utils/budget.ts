@@ -112,17 +112,42 @@ export function calculateMonthlyBudget(
   let totalBudget = 0;
   let totalSpent = 0;
 
-  // Calculate per-category budgets
-  categories.forEach(category => {
-    const status = calculateCategoryBudget(category, transactions);
-    if (status) {
-      categoryBreakdown.push(status);
-      totalBudget += status.budget;
-      totalSpent += status.spent;
+  // Pre-calculate spending by category for O(1) lookup
+  const spendingByCategory = new Map<string, number>();
+  for (let i = 0; i < transactions.length; i++) {
+    const t = transactions[i];
+    if (t.amount > 0 && t.isExpense) {
+      spendingByCategory.set(
+        t.category,
+        (spendingByCategory.get(t.category) || 0) + t.amount
+      );
     }
-  });
+  }
 
-  // Use global budget if set, otherwise sum of category budgets
+  // Calculate per-category budgets in single pass
+  for (let i = 0; i < categories.length; i++) {
+    const category = categories[i];
+    if (!category.monthlyBudget || category.monthlyBudget <= 0) continue;
+
+    const spent = spendingByCategory.get(category.name) || 0;
+    const budget = category.monthlyBudget;
+    const percentage = budget > 0 ? (spent / budget) * 100 : 0;
+
+    categoryBreakdown.push({
+      categoryId: category.id!,
+      categoryName: category.name,
+      spent,
+      budget,
+      percentage,
+      remaining: budget - spent,
+      isOverBudget: spent > budget,
+      warningLevel: getWarningLevel(percentage)
+    });
+
+    totalBudget += budget;
+    totalSpent += spent;
+  }
+
   const effectiveBudget = globalBudget || totalBudget;
   const percentage = effectiveBudget > 0 ? (totalSpent / effectiveBudget) * 100 : 0;
 

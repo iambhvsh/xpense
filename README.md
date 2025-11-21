@@ -256,14 +256,52 @@ Located in `src/lib/services/gemini.ts`
 - Transaction data only shared with Gemini AI when using AI features
 - No analytics or tracking
 
+## Production Release
+
+### Building for Production
+
+1. **Setup Keystore** (First time only)
+   - Follow instructions in `KEYSTORE_SETUP.md`
+   - Add secrets to GitHub: `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_PASSWORD`
+
+2. **Automated Build via GitHub Actions**
+   ```bash
+   git push origin main
+   ```
+   - APK will be built automatically
+   - Download from Actions artifacts
+
+3. **Manual Build**
+   ```bash
+   npm run build
+   npm run cap:sync
+   cd android
+   ./gradlew assembleRelease
+   ```
+
+### Pre-Release Checklist
+See `PRODUCTION_CHECKLIST.md` for complete checklist including:
+- Keystore setup
+- Testing requirements
+- Google Play Console setup
+- Store listing content
+- Release strategy
+
+### Privacy Policy
+See `PRIVACY_POLICY.md` for the complete privacy policy to use in Google Play Store.
+
 ## License
 
-[Add your license here]
+MIT License - See LICENSE file for details
 
 ## Support
 
 For issues or questions, please open an issue on GitHub.
 
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
 ---
 
-Built with ❤️ by Bhavesh Patil
+Built with ❤️ using React, TypeScript, and Capacitor

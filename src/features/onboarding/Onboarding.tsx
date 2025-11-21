@@ -28,24 +28,26 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
     };
   }, []);
 
-  const handleScroll = () => {
+  const handleScroll = React.useCallback(() => {
     if (!scrollRef.current) return;
     
     const scrollLeft = scrollRef.current.scrollLeft;
     const cardWidth = scrollRef.current.offsetWidth;
     const newCard = Math.round(scrollLeft / cardWidth);
     
-    setCurrentCard(newCard);
-    
-    // Show buttons when reaching last card
-    if (newCard === TOTAL_CARDS - 1 && !showButtons) {
+    if (newCard !== currentCard) {
       requestAnimationFrame(() => {
-        setShowButtons(true);
+        setCurrentCard(newCard);
+        
+        // Show buttons when reaching last card
+        if (newCard === TOTAL_CARDS - 1 && !showButtons) {
+          setShowButtons(true);
+        } else if (newCard < TOTAL_CARDS - 1 && showButtons) {
+          setShowButtons(false);
+        }
       });
-    } else if (newCard < TOTAL_CARDS - 1 && showButtons) {
-      setShowButtons(false);
     }
-  };
+  }, [currentCard, showButtons]);
 
   const handleGetStarted = async () => {
     if (isClosing) return;
@@ -56,7 +58,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
       await dbHelpers.setSetting('xpense-api-key', apiKey.trim());
       
       // Update cache
-      const { updateApiKeyCache } = await import('@/lib/services/gemini');
+      const { updateApiKeyCache } = await import('@/lib/api/gemini');
       updateApiKeyCache(apiKey.trim());
     }
     
@@ -84,12 +86,10 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
 
   return (
     <div 
-      className={`fixed inset-0 z-[100] flex flex-col bg-black gpu-accelerated transition-opacity duration-500 ${
+      className={`fixed inset-0 z-[100] flex flex-col bg-black transition-opacity duration-500 ${
         isClosing ? 'animate-fade-out' : mounted ? 'opacity-100' : 'opacity-0'
       }`}
-      style={{ 
-        transform: 'translateZ(0)',
-        backfaceVisibility: 'hidden',
+      style={{
         WebkitBackfaceVisibility: 'hidden',
         paddingTop: 'env(safe-area-inset-top, 0px)'
       }}
@@ -127,7 +127,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
               <div className="max-w-md text-center">
                 <div className="relative inline-block mb-8">
                   <div className="absolute inset-0 bg-gradient-to-br from-ios-blue to-ios-indigo rounded-[32px] blur-2xl opacity-40 animate-pulse" />
-                  <div className="relative w-28 h-28 mx-auto bg-gradient-to-br from-ios-blue to-ios-indigo rounded-[32px] shadow-2xl flex items-center justify-center gpu-accelerated">
+                  <div className="relative w-28 h-28 mx-auto bg-gradient-to-br from-ios-blue to-ios-indigo rounded-[32px] shadow-2xl flex items-center justify-center">
                     <Wallet size={56} strokeWidth={2.5} className="text-white" />
                   </div>
                 </div>
@@ -171,7 +171,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
               <div className="max-w-md text-center">
                 <div className="relative inline-block mb-8">
                   <div className="absolute inset-0 bg-gradient-to-br from-ios-green to-[#30D158] rounded-[28px] blur-2xl opacity-40" />
-                  <div className="relative w-24 h-24 mx-auto bg-gradient-to-br from-ios-green to-[#30D158] rounded-[28px] shadow-2xl flex items-center justify-center gpu-accelerated">
+                  <div className="relative w-24 h-24 mx-auto bg-gradient-to-br from-ios-green to-[#30D158] rounded-[28px] shadow-2xl flex items-center justify-center">
                     <Plus size={48} strokeWidth={2.5} className="text-white" />
                   </div>
                 </div>
@@ -218,7 +218,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
               <div className="max-w-md text-center">
                 <div className="relative inline-block mb-8">
                   <div className="absolute inset-0 bg-gradient-to-br from-ios-orange to-[#FF9F0A] rounded-[28px] blur-2xl opacity-40" />
-                  <div className="relative w-24 h-24 mx-auto bg-gradient-to-br from-ios-orange to-[#FF9F0A] rounded-[28px] shadow-2xl flex items-center justify-center gpu-accelerated">
+                  <div className="relative w-24 h-24 mx-auto bg-gradient-to-br from-ios-orange to-[#FF9F0A] rounded-[28px] shadow-2xl flex items-center justify-center">
                     <PieChart size={48} strokeWidth={2.5} className="text-white" />
                   </div>
                 </div>
@@ -256,7 +256,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                 <div className="text-center mb-8">
                   <div className="relative inline-block mb-6">
                     <div className="absolute inset-0 bg-gradient-to-br from-[#5856D6] to-[#AF52DE] rounded-[28px] blur-2xl opacity-40 animate-pulse" />
-                    <div className="relative w-24 h-24 mx-auto bg-gradient-to-br from-[#5856D6] to-[#AF52DE] rounded-[28px] shadow-2xl flex items-center justify-center gpu-accelerated">
+                    <div className="relative w-24 h-24 mx-auto bg-gradient-to-br from-[#5856D6] to-[#AF52DE] rounded-[28px] shadow-2xl flex items-center justify-center">
                       <Sparkles size={48} strokeWidth={2.5} className="text-white" fill="currentColor" />
                     </div>
                   </div>
@@ -268,10 +268,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                   </p>
                 </div>
 
-                <div 
-                  className="bg-gradient-to-br from-[#0A0A0A] to-[#141414] rounded-[24px] p-6 border border-[#1C1C1E] gpu-accelerated"
-                  style={{ transform: 'translateZ(0)' }}
-                >
+                <div className="bg-gradient-to-br from-[#0A0A0A] to-[#141414] rounded-[24px] p-6 border border-[#1C1C1E]">
                   <div className="flex items-center gap-3 mb-4">
                     <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#5856D6] to-[#AF52DE] flex items-center justify-center shrink-0">
                       <Sparkles size={20} strokeWidth={2.5} className="text-white" fill="currentColor" />
@@ -287,11 +284,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                     value={apiKey}
                     onChange={(e) => setApiKey(e.target.value)}
                     placeholder="Paste your API key here"
-                    className="w-full bg-[#141414] text-white text-[15px] px-4 py-4 rounded-[16px] placeholder-[#48484A] tracking-[-0.24px] outline-none border border-[#1C1C1E] transition-all focus:bg-[#1C1C1E] focus:ring-2 focus:ring-[#5856D6]/30 gpu-accelerated mb-3"
-                    style={{ 
-                      WebkitAppearance: 'none',
-                      transform: 'translateZ(0)'
-                    }}
+                    className="w-full bg-[#141414] text-white text-[15px] px-4 py-4 rounded-[16px] placeholder-[#48484A] tracking-[-0.24px] outline-none border border-[#1C1C1E] transition-all focus:bg-[#1C1C1E] focus:ring-2 focus:ring-[#5856D6]/30 mb-3"
                   />
                   
                   <div className="flex items-start gap-2 bg-[#0A0A0A] rounded-[12px] p-3 border border-[#1C1C1E]">
@@ -346,8 +339,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
           <button
             onClick={handleGetStarted}
             disabled={isClosing}
-            className="w-full bg-ios-blue active:bg-[#0051D5] text-white py-3.5 rounded-[14px] font-semibold text-[17px] tracking-[-0.41px] transition-colors shadow-lg flex items-center justify-center gap-2 gpu-accelerated disabled:opacity-50"
-            style={{ transform: 'translateZ(0)' }}
+            className="w-full bg-ios-blue active:bg-[#0051D5] text-white py-3.5 rounded-[14px] font-semibold text-[17px] tracking-[-0.41px] transition-colors shadow-lg flex items-center justify-center gap-2 disabled:opacity-50"
           >
             <span>Get Started</span>
             <ArrowRight size={20} strokeWidth={2.5} />

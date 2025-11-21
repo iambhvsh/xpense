@@ -1,5 +1,5 @@
 import React, { useMemo, useEffect } from 'react';
-import { useTransactions, useCategories, useSetting } from '@/lib/hooks/useDatabase';
+import { useTransactions, useCategories, useSetting } from '@/hooks/useDatabase';
 import { 
   calculateMonthlyBudget, 
   getCurrentMonthTransactions, 
@@ -17,11 +17,7 @@ import { dbHelpers } from '@/lib/db';
 export const Budget: React.FC = () => {
   // Process recurring expenses on mount
   useEffect(() => {
-    dbHelpers.processRecurringExpenses().then(count => {
-      if (count > 0) {
-        console.log(`Processed ${count} recurring expenses`);
-      }
-    });
+    dbHelpers.processRecurringExpenses();
   }, []);
   const { transactions, isLoading: transactionsLoading } = useTransactions();
   const { categories, isLoading: categoriesLoading } = useCategories();
@@ -50,7 +46,7 @@ export const Budget: React.FC = () => {
   if (transactionsLoading || categoriesLoading) {
     return (
       <div className="flex items-center justify-center min-h-[200px]">
-        <Spinner className="w-8 h-8 text-ios-blue" />
+        <Spinner className="w-8 h-8 text-[#8E8E93]" />
       </div>
     );
   }

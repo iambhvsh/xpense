@@ -1,51 +1,88 @@
 import path from 'path';
-import { defineConfig, loadEnv } from 'vite';
+import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import viteCompression from 'vite-plugin-compression';
 
-export default defineConfig(({ mode }) => {
-    const env = loadEnv(mode, '.', '');
-    return {
-      server: {
-        port: 3000,
-        host: '0.0.0.0',
-      },
-      plugins: [react()],
-      define: {
-        'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-        'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
-      },
-      resolve: {
-        alias: {
-          '@': path.resolve(__dirname, './src'),
-        }
-      },
-      build: {
-        target: 'es2015',
-        minify: 'terser',
-        terserOptions: {
-          compress: {
-            drop_console: true,
-            drop_debugger: true,
-            pure_funcs: ['console.log', 'console.info'],
-          },
-        },
-        rollupOptions: {
-          output: {
-            manualChunks: {
-              'react-vendor': ['react', 'react-dom'],
-              'charts': ['recharts'],
-              'ai': ['@google/genai'],
-              'icons': ['lucide-react'],
-            }
-          }
-        },
-        chunkSizeWarningLimit: 600,
-        cssCodeSplit: true,
-        sourcemap: false,
-      },
-      optimizeDeps: {
-        include: ['react', 'react-dom', 'lucide-react'],
-        exclude: ['@google/genai'],
+export default defineConfig({
+  server: {
+    port: 3000,
+    host: '0.0.0.0',
+  },
+  plugins: [
+    react(),
+    viteCompression({
+      algorithm: 'gzip',
+      ext: '.gz',
+      threshold: 1024,
+      deleteOriginFile: false,
+    }),
+  ],
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+    },
+    dedupe: ['react', 'react-dom']
+  },
+  build: {
+    target: 'es2020',
+    minify: 'terser',
+    cssMinify: true,
+    terserOptions: {
+      compress: {
+        drop_console: true,
+        drop_debugger: true,
+        pure_funcs: ['console.log', 'console.info', 'console.debug', 'console.warn']
       }
-    };
+    },
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom'],
+          'db': ['dexie', 'dexie-react-hooks'],
+          'charts': ['chart.js'],
+          'state': ['zustand'],
+          'capacitor': ['@capacitor/core', '@capacitor/app', '@capacitor/haptics', '@capacitor/status-bar', '@capacitor/keyboard', '@capacitor/splash-screen'],
+        },
+        assetFileNames: 'assets/[name]-[hash][extname]',
+        chunkFileNames: 'assets/[name]-[hash].js',
+        entryFileNames: 'assets/[name]-[hash].js',
+      }
+    },
+    chunkSizeWarningLimit: 800,
+    cssCodeSplit: true,
+    sourcemap: false,
+    reportCompressedSize: false,
+    assetsInlineLimit: 4096,
+    modulePreload: {
+      polyfill: false,
+    },
+  },
+  optimizeDeps: {
+    include: [
+      'react', 
+      'react-dom', 
+      'lucide-react', 
+      '@capacitor/core', 
+      '@capacitor/app', 
+      'dexie',
+      'chart.js',
+      'zustand',
+      'es-toolkit/compat'
+    ],
+    exclude: ['@google/genai'],
+    esbuildOptions: {
+      target: 'es2020',
+    },
+  },
+  worker: {
+    format: 'es',
+    plugins: () => [],
+  },
+  esbuild: {
+    logOverride: { 
+      'this-is-undefined-in-esm': 'silent',
+    },
+    legalComments: 'none',
+    treeShaking: true,
+  }
 });
