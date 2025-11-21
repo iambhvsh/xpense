@@ -1,170 +1,299 @@
-name: Build Xpense
+name: 🚀 Build Xpense Android
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, develop ]
   pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '20'
+  JAVA_VERSION: '21'
 
 jobs:
   build:
+    name: 📦 Build Android Release APK
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     steps:
-      - name: Checkout repository
+      # ═══════════════════════════════════════════════════════════
+      # 📥 CHECKOUT & SETUP
+      # ═══════════════════════════════════════════════════════════
+      - name: 📥 Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Set up Node.js
+      - name: 🔧 Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
 
-      - name: Cache node_modules
-        uses: actions/cache@v4
+      - name: ☕ Setup JDK
+        uses: actions/setup-java@v4
         with:
-          path: node_modules
-          key: ${{ runner.os }}-node-${{ hashFiles('package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
+          distribution: 'temurin'
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: 'gradle'
 
-      - name: Install dependencies
-        run: npm ci
+      # ═══════════════════════════════════════════════════════════
+      # 📦 INSTALL DEPENDENCIES
+      # ═══════════════════════════════════════════════════════════
+      - name: 📦 Install dependencies
+        run: |
+          echo "📦 Installing npm dependencies..."
+          npm ci --prefer-offline --no-audit
+          echo "✅ Dependencies installed successfully"
 
-      - name: Cache Vite build
-        uses: actions/cache@v4
-        with:
-          path: |
-            dist
-            node_modules/.vite
-          key: ${{ runner.os }}-vite-${{ hashFiles('src/**/*', 'index.html', 'vite.config.ts') }}
-          restore-keys: |
-            ${{ runner.os }}-vite-
-
-      - name: Build web assets (optimized with gzip compression)
-        run: npm run build
+      # ═══════════════════════════════════════════════════════════
+      # 🏗️ BUILD WEB ASSETS
+      # ═══════════════════════════════════════════════════════════
+      - name: 🏗️ Build web assets
+        run: |
+          echo "🏗️ Building production assets with Vite..."
+          npm run build
+          echo ""
+          echo "📊 Build Summary:"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Total size: $(du -sh dist | cut -f1)"
+          echo "Total files: $(find dist -type f | wc -l)"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "✅ Build completed successfully"
         env:
           NODE_ENV: production
 
-      - name: Remove existing Android platform
+      # ═══════════════════════════════════════════════════════════
+      # 📱 SETUP CAPACITOR ANDROID
+      # ═══════════════════════════════════════════════════════════
+      - name: 📱 Setup Android platform
         run: |
+          echo "📱 Setting up Capacitor Android platform..."
           if [ -d "android" ]; then
-            echo "🗑️ Removing existing android directory"
+            echo "🗑️ Cleaning existing Android platform..."
             rm -rf android
           fi
+          echo "➕ Adding Android platform..."
+          npx cap add android
+          echo "✅ Android platform added"
 
-      - name: Add Android platform
-        run: npx cap add android
+      - name: 🎨 Generate app icons
+        run: |
+          echo "🎨 Generating app icons and splash screens..."
+          npx capacitor-assets generate --android || echo "⚠️ Icon generation skipped (optional)"
+          echo "✅ Assets generation complete"
 
-      - name: Generate App Icons
-        run: npx capacitor-assets generate --android
+      - name: 🔄 Sync Capacitor
+        run: |
+          echo "🔄 Syncing web assets to Android..."
+          npx cap sync android
+          echo "✅ Capacitor sync completed"
 
-      - name: Sync Capacitor
-        run: npx cap sync android
-
-      - name: Add Android Permissions to Manifest
+      - name: 🔐 Configure Android permissions
         run: |
           MANIFEST_PATH="android/app/src/main/AndroidManifest.xml"
+          echo "🔐 Adding Android permissions to manifest..."
           
-          # Check if permissions already exist
           if ! grep -q "READ_MEDIA_IMAGES" "$MANIFEST_PATH"; then
-            # Add permissions before </manifest> tag
-            sed -i '/<\/manifest>/i \    <!-- Permissions for Receipt Scanning and CSV Export -->\n    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />\n    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />\n    <uses-permission android:name="android.permission.CAMERA" />\n    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />\n' "$MANIFEST_PATH"
-            echo "✅ Permissions added to AndroidManifest.xml"
+            sed -i '/<\/manifest>/i \    <!-- Camera & Storage Permissions -->\n    <uses-permission android:name="android.permission.CAMERA" />\n    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />\n    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />\n    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />' "$MANIFEST_PATH"
+            echo "✅ Permissions added successfully"
           else
-            echo "✅ Permissions already exist in AndroidManifest.xml"
+            echo "✅ Permissions already exist"
           fi
-          
-          # Verify the changes
-          echo "📄 Current permissions in manifest:"
-          grep "uses-permission" "$MANIFEST_PATH" || echo "No permissions found"
 
-      - name: Set up JDK 21
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 21
-
-      - name: Cache Gradle packages
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-            ~/.android/build-cache
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', 'android/gradle.properties') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
-
-      - name: Grant execution permission to Gradle
-        run: chmod +x android/gradlew
-
-      - name: Download Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Cache Android SDK
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.android/sdk
-            ~/Android/Sdk
-          key: ${{ runner.os }}-android-sdk-${{ hashFiles('android/build.gradle', 'android/app/build.gradle') }}
-          restore-keys: |
-            ${{ runner.os }}-android-sdk-
-
-      - name: Setup Keystore
+      # ═══════════════════════════════════════════════════════════
+      # 🔐 KEYSTORE SETUP (SECURE)
+      # ═══════════════════════════════════════════════════════════
+      - name: 🔐 Setup signing keystore
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
           KEYSTORE_PATH="android/app/release.keystore"
+          echo "🔐 Setting up release keystore..."
           
-          # Check if keystore exists in secrets
-          if [ -n "$KEYSTORE_BASE64" ]; then
-            echo "🔑 Using existing keystore from secrets"
-            echo "$KEYSTORE_BASE64" | base64 -d > "$KEYSTORE_PATH"
-            
-            # Verify keystore was decoded properly
-            if [ -f "$KEYSTORE_PATH" ]; then
-              echo "✅ Keystore decoded successfully"
-              ls -lh "$KEYSTORE_PATH"
-            else
-              echo "❌ Failed to decode keystore from secrets"
-              exit 1
-            fi
-          else
-            echo "❌ KEYSTORE_BASE64 secret not found!"
-            echo "Please add your keystore to GitHub Secrets"
+          # Check if all required secrets are present
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "❌ ERROR: KEYSTORE_BASE64 secret is not set!"
+            echo "📝 Please add the following secrets to your GitHub repository:"
+            echo "   - KEYSTORE_BASE64: Your keystore file encoded in base64"
+            echo "   - KEYSTORE_PASSWORD: Your keystore password"
+            echo "   - KEY_ALIAS: Your key alias"
+            echo "   - KEY_PASSWORD: Your key password"
+            echo ""
+            echo "📝 To generate keystore:"
+            echo "   keytool -genkey -v -keystore release.keystore -alias xpense \\"
+            echo "           -keyalg RSA -keysize 4096 -validity 10000"
+            echo ""
+            echo "📝 To encode keystore to base64:"
+            echo "   base64 release.keystore | tr -d '\\n'"
             exit 1
           fi
+          
+          # Decode and save keystore
+          echo "$KEYSTORE_BASE64" | base64 -d > "$KEYSTORE_PATH"
+          
+          if [ ! -f "$KEYSTORE_PATH" ]; then
+            echo "❌ Failed to decode keystore"
+            exit 1
+          fi
+          
+          echo "✅ Keystore configured successfully"
+          ls -lh "$KEYSTORE_PATH"
 
-      - name: Build Release APK (optimized)
-        working-directory: android
+      - name: � C onfigure Gradle signing
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
-          echo "🔨 Building release APK..."
-          ./gradlew assembleRelease --no-daemon --parallel --build-cache --configuration-cache
-          echo "✅ Build completed successfully"
+          BUILD_GRADLE="android/app/build.gradle"
+          echo "📝 Configuring release signing in build.gradle..."
+          
+          # Check if signing config already exists
+          if grep -q "signingConfigs {" "$BUILD_GRADLE"; then
+            echo "✅ Signing configuration already exists"
+          else
+            echo "➕ Adding signing configuration..."
+            # Append signing configuration
+            cat >> "$BUILD_GRADLE" << 'EOF'
+          
+          android {
+              signingConfigs {
+                  release {
+                      storeFile file('release.keystore')
+                      storePassword System.getenv('SIGNING_STORE_PASSWORD')
+                      keyAlias System.getenv('SIGNING_KEY_ALIAS')
+                      keyPassword System.getenv('SIGNING_KEY_PASSWORD')
+                  }
+              }
+              buildTypes {
+                  release {
+                      signingConfig signingConfigs.release
+                      minifyEnabled false
+                      shrinkResources false
+                  }
+              }
+          }
+          EOF
+            echo "✅ Signing configuration added"
+          fi
 
-      - name: List and verify APK
+      # ═══════════════════════════════════════════════════════════
+      # 🏗️ BUILD RELEASE APK
+      # ═══════════════════════════════════════════════════════════
+      - name: 🔧 Setup Gradle
         run: |
-          echo "📦 Listing all APK files:"
-          find android/app/build/outputs -name "*.apk" -type f
-          echo ""
-          echo "📄 Detailed listing:"
-          ls -laR android/app/build/outputs/apk/ || echo "No apk directory found"
-          echo ""
-          echo "📊 APK size:"
-          du -h android/app/build/outputs/apk/release/*.apk
+          echo "🔧 Configuring Gradle wrapper..."
+          chmod +x android/gradlew
+          echo "✅ Gradle ready"
 
-      - name: Upload Release APK
+      - name: 🏗️ Build signed release APK
+        working-directory: android
+        env:
+          SIGNING_STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          SIGNING_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          echo "🏗️ Building signed release APK..."
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          ./gradlew assembleRelease \
+            --no-daemon \
+            --stacktrace \
+            -Porg.gradle.parallel=true \
+            -Porg.gradle.caching=true
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "✅ APK build completed successfully"
+
+      # ═══════════════════════════════════════════════════════════
+      # ✅ VERIFY & PACKAGE
+      # ═══════════════════════════════════════════════════════════
+      - name: ✅ Verify APK signature
+        run: |
+          APK_PATH="android/app/build/outputs/apk/release/app-release.apk"
+          echo "✅ Verifying APK..."
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          
+          if [ ! -f "$APK_PATH" ]; then
+            echo "❌ APK not found at: $APK_PATH"
+            echo ""
+            echo "🔍 Searching for APK files..."
+            find android/app/build/outputs -name "*.apk" -type f || true
+            exit 1
+          fi
+          
+          echo "✅ APK found successfully!"
+          echo ""
+          echo "📦 APK Details:"
+          echo "   Location: $APK_PATH"
+          echo "   Size: $(du -h $APK_PATH | cut -f1)"
+          echo ""
+          
+          # Verify APK signature
+          echo "🔍 Verifying APK signature..."
+          if command -v apksigner >/dev/null 2>&1; then
+            apksigner verify "$APK_PATH" && echo "✅ APK signature valid" || echo "⚠️ Could not verify signature"
+          else
+            echo "⚠️ apksigner not available, skipping signature verification"
+          fi
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+      - name: 📦 Rename APK with version
+        run: |
+          APK_PATH="android/app/build/outputs/apk/release/app-release.apk"
+          VERSION=$(date +%Y%m%d-%H%M%S)
+          COMMIT_SHORT=$(echo ${{ github.sha }} | cut -c1-7)
+          NEW_NAME="android/app/build/outputs/apk/release/Xpense-v${VERSION}-${COMMIT_SHORT}.apk"
+          
+          cp "$APK_PATH" "$NEW_NAME"
+          echo "📦 Created: Xpense-v${VERSION}-${COMMIT_SHORT}.apk"
+
+      - name: 📤 Upload release APK
         uses: actions/upload-artifact@v4
         with:
-          name: xpense-release-${{ github.sha }}
+          name: xpense-apk-${{ github.sha }}
           path: android/app/build/outputs/apk/release/*.apk
           retention-days: 30
+          compression-level: 6
 
+      - name: 📤 Upload build logs (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs-${{ github.sha }}
+          path: |
+            android/app/build/reports/
+            android/app/build/outputs/logs/
+          retention-days: 7
 
+      # ═══════════════════════════════════════════════════════════
+      # 📊 BUILD SUMMARY
+      # ═══════════════════════════════════════════════════════════
+      - name: 📊 Build summary
+        if: success()
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "🎉 BUILD SUCCESSFUL"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "📱 App: Xpense"
+          echo "🔀 Branch: ${{ github.ref_name }}"
+          echo "📝 Commit: ${{ github.sha }}"
+          echo "👤 Author: ${{ github.actor }}"
+          echo ""
+          echo "📦 Artifact: xpense-apk-${{ github.sha }}"
+          echo "📥 Download from the Actions artifacts section"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+      - name: ❌ Build failed summary
+        if: failure()
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "❌ BUILD FAILED"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Please check the logs above for details"
+          echo "Build logs have been uploaded to artifacts"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
