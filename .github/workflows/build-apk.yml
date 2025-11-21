@@ -193,7 +193,7 @@ jobs:
           retention-days: 30
 
       - name: Upload Keystore (First Build Only)
-        if: ${{ !secrets.KEYSTORE_BASE64 }}
+        if: ${{ secrets.KEYSTORE_BASE64 == '' }}
         uses: actions/upload-artifact@v4
         with:
           name: keystore-backup-${{ github.sha }}
