@@ -112,67 +112,70 @@ jobs:
             ${{ runner.os }}-android-sdk-
 
       - name: Setup Keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
           KEYSTORE_PATH="android/app/xpense-release.keystore"
           
           # Check if keystore exists in secrets
-          if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
+          if [ -n "$KEYSTORE_BASE64" ]; then
             echo "🔑 Using existing keystore from secrets"
-            echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > "$KEYSTORE_PATH"
-          else
-            echo "⚠️ No keystore found in secrets. Generating new keystore..."
-            echo "⚠️ IMPORTANT: After this build, you MUST save the keystore to GitHub Secrets!"
-            echo ""
+            echo "$KEYSTORE_BASE64" | base64 -d > "$KEYSTORE_PATH"
             
-            # Generate a production-grade keystore
-            keytool -genkeypair \
-              -v \
-              -keystore "$KEYSTORE_PATH" \
-              -alias xpense \
-              -keyalg RSA \
-              -keysize 4096 \
-              -validity 10000 \
-              -storepass "${{ secrets.KEYSTORE_PASSWORD || 'Xp3ns3!2025#SecureKey@' }}" \
-              -keypass "${{ secrets.KEY_PASSWORD || 'Xp3ns3!2025#SecureKey@' }}" \
-              -dname "CN=Xpense, OU=Mobile, O=XpenseApp, L=Aurangabad, ST=Maharashtra, C=IN"
-            
-            echo ""
-            echo "📦 Keystore generated. To save it for future builds, run:"
-            echo "base64 $KEYSTORE_PATH | pbcopy"
-            echo "Then add it to GitHub Secrets as KEYSTORE_BASE64"
-          fi
-          
-          # Verify keystore
-          if [ -f "$KEYSTORE_PATH" ]; then
-            echo "✅ Keystore ready at $KEYSTORE_PATH"
-            ls -lh "$KEYSTORE_PATH"
+            # Verify keystore was decoded properly
+            if [ -f "$KEYSTORE_PATH" ]; then
+              echo "✅ Keystore decoded successfully"
+              ls -lh "$KEYSTORE_PATH"
+            else
+              echo "❌ Failed to decode keystore from secrets"
+              exit 1
+            fi
           else
-            echo "❌ Keystore creation failed"
+            echo "❌ KEYSTORE_BASE64 secret not found!"
+            echo "Please add your keystore to GitHub Secrets"
             exit 1
           fi
 
       - name: Configure Signing in build.gradle
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
+          # Verify secrets are available
+          if [ -z "$KEYSTORE_PASSWORD" ] || [ -z "$KEY_PASSWORD" ]; then
+            echo "❌ KEYSTORE_PASSWORD or KEY_PASSWORD secrets not found!"
+            exit 1
+          fi
+          
+          echo "✅ Signing secrets verified"
+          
           cat >> android/app/build.gradle << 'EOF'
           
           android.signingConfigs {
               release {
                   storeFile file('xpense-release.keystore')
-                  storePassword System.getenv('KEYSTORE_PASSWORD') ?: 'Xp3ns3!2025#SecureKey@'
+                  storePassword System.getenv('KEYSTORE_PASSWORD')
                   keyAlias 'xpense'
-                  keyPassword System.getenv('KEY_PASSWORD') ?: 'Xp3ns3!2025#SecureKey@'
+                  keyPassword System.getenv('KEY_PASSWORD')
               }
           }
           
           android.buildTypes.release.signingConfig android.signingConfigs.release
           EOF
+          
+          echo "✅ Signing configuration added to build.gradle"
 
       - name: Build Release APK (optimized)
         working-directory: android
         env:
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD || 'Xp3ns3!2025#SecureKey@' }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || 'Xp3ns3!2025#SecureKey@' }}
-        run: ./gradlew assembleRelease --no-daemon --parallel --build-cache --configuration-cache
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          echo "🔨 Building release APK..."
+          ./gradlew assembleRelease --no-daemon --parallel --build-cache --configuration-cache
+          echo "✅ Build completed successfully"
 
       - name: List and verify APK
         run: |
@@ -192,19 +195,4 @@ jobs:
           path: android/app/build/outputs/apk/release/*.apk
           retention-days: 30
 
-      - name: Check if keystore exists in secrets
-        id: keystore-check
-        run: |
-          if [ -z "${{ secrets.KEYSTORE_BASE64 }}" ]; then
-            echo "exists=false" >> $GITHUB_OUTPUT
-          else
-            echo "exists=true" >> $GITHUB_OUTPUT
-          fi
 
-      - name: Upload Keystore (First Build Only)
-        if: steps.keystore-check.outputs.exists == 'false'
-        uses: actions/upload-artifact@v4
-        with:
-          name: keystore-backup-${{ github.sha }}
-          path: android/app/xpense-release.keystore
-          retention-days: 1
