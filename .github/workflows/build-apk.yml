@@ -192,8 +192,17 @@ jobs:
           path: android/app/build/outputs/apk/release/*.apk
           retention-days: 30
 
+      - name: Check if keystore exists in secrets
+        id: keystore-check
+        run: |
+          if [ -z "${{ secrets.KEYSTORE_BASE64 }}" ]; then
+            echo "exists=false" >> $GITHUB_OUTPUT
+          else
+            echo "exists=true" >> $GITHUB_OUTPUT
+          fi
+
       - name: Upload Keystore (First Build Only)
-        if: ${{ secrets.KEYSTORE_BASE64 == '' }}
+        if: steps.keystore-check.outputs.exists == 'false'
         uses: actions/upload-artifact@v4
         with:
           name: keystore-backup-${{ github.sha }}
