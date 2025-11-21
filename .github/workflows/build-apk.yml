@@ -190,20 +190,46 @@ jobs:
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
           exit 1
 
-      - name: 📝 Verify signing configuration
+      - name: 📝 Add signing configuration to build.gradle
         if: steps.check-secrets.outputs.has_keystore == 'true'
         run: |
           BUILD_GRADLE="android/app/build.gradle"
           
-          echo "📝 Verifying signing configuration in build.gradle..."
+          echo "📝 Adding signing configuration to build.gradle..."
           
+          # Check if signing config already exists
           if grep -q "signingConfigs {" "$BUILD_GRADLE"; then
-            echo "✅ Signing configuration exists in build.gradle"
-            echo "✅ Using environment variables: KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD"
+            echo "✅ Signing configuration already exists"
           else
-            echo "❌ No signing configuration found in build.gradle"
-            exit 1
+            echo "➕ Adding signing configuration..."
+            
+            # Add signing config after the android { line
+            sed -i '/^android {/a\
+            \    signingConfigs {\
+            \        release {\
+            \            if (System.getenv("KEYSTORE_PASSWORD")) {\
+            \                storeFile file('\''release.keystore'\'')\
+            \                storePassword System.getenv("KEYSTORE_PASSWORD")\
+            \                keyAlias System.getenv("KEY_ALIAS")\
+            \                keyPassword System.getenv("KEY_PASSWORD")\
+            \            }\
+            \        }\
+            \    }' "$BUILD_GRADLE"
+            
+            # Update the release buildType to use signing config
+            sed -i '/buildTypes {/,/release {/{
+              /release {/a\
+            \            if (System.getenv("KEYSTORE_PASSWORD")) {\
+            \                signingConfig signingConfigs.release\
+            \            }
+            }' "$BUILD_GRADLE"
+            
+            echo "✅ Signing configuration added successfully"
           fi
+          
+          echo ""
+          echo "📄 Verifying build.gradle signing config:"
+          grep -A 10 "signingConfigs {" "$BUILD_GRADLE" || echo "⚠️ Could not display signing config"
 
       # ═══════════════════════════════════════════════════════════
       # 🏗️ BUILD RELEASE APK
