@@ -190,34 +190,19 @@ jobs:
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
           exit 1
 
-      - name: 📝 Configure Gradle signing
+      - name: 📝 Verify signing configuration
         if: steps.check-secrets.outputs.has_keystore == 'true'
         run: |
           BUILD_GRADLE="android/app/build.gradle"
           
-          echo "📝 Configuring release signing in build.gradle..."
+          echo "📝 Verifying signing configuration in build.gradle..."
           
           if grep -q "signingConfigs {" "$BUILD_GRADLE"; then
-            echo "✅ Signing configuration already exists"
+            echo "✅ Signing configuration exists in build.gradle"
+            echo "✅ Using environment variables: KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD"
           else
-            echo "➕ Adding signing configuration..."
-            
-            # Find the android block and add signing config
-            sed -i '/android {/a\
-            \    signingConfigs {\
-            \        release {\
-            \            storeFile file("release.keystore")\
-            \            storePassword System.getenv("SIGNING_STORE_PASSWORD")\
-            \            keyAlias System.getenv("SIGNING_KEY_ALIAS")\
-            \            keyPassword System.getenv("SIGNING_KEY_PASSWORD")\
-            \        }\
-            \    }' "$BUILD_GRADLE"
-            
-            # Update buildTypes release to use signing config
-            sed -i '/buildTypes {/,/release {/a\
-            \            signingConfig signingConfigs.release' "$BUILD_GRADLE"
-            
-            echo "✅ Signing configuration added"
+            echo "❌ No signing configuration found in build.gradle"
+            exit 1
           fi
 
       # ═══════════════════════════════════════════════════════════
@@ -235,9 +220,9 @@ jobs:
         if: steps.check-secrets.outputs.has_keystore == 'true'
         working-directory: android
         env:
-          SIGNING_STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          SIGNING_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          SIGNING_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
           echo "🏗️ Building signed release APK..."
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
