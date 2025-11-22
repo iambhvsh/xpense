@@ -241,7 +241,7 @@ const App: React.FC = () => {
                   </div>
                 }
               >
-                <div key={activeTab} className="min-h-[200px]">
+                <div key={activeTab} className="min-h-[200px] animate-tab-fade-in">
                   {activeTab === 'overview' && (
                     <>
                       <Dashboard transactions={dbTransactions} />
