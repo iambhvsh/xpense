@@ -146,12 +146,13 @@ export const BottomSheetBase: React.FC<BottomSheetBaseProps> = ({
         <div
           className="flex-1 overflow-y-auto overscroll-contain no-scrollbar smooth-scroll"
           style={{
-            background: 'linear-gradient(to bottom, rgba(28, 28, 30, 0.7) 0%, rgba(0, 0, 0, 0.95) 40%, rgba(0, 0, 0, 1) 80%)',
-            WebkitOverflowScrolling: 'touch',
-            paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 24px)'
+            background: 'rgba(0, 0, 0, 0.98)',
+            WebkitOverflowScrolling: 'touch'
           }}
         >
-          {content}
+          <div style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 24px)' }}>
+            {content}
+          </div>
         </div>
       </div>
     </div>
