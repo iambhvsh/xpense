@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Pencil, Check, X } from 'lucide-react';
-import { useCategories } from '@/hooks/useDatabase';
-import { db } from '@/lib/db';
-import { useAlert } from '@/components/ui/AlertProvider';
+import { useCategories } from '../../lib/hooks/useDatabase';
+import { db } from '../../lib/db';
+import { useAlert } from '../context/AlertProvider';
 
 export const BudgetManager: React.FC = () => {
   const { categories, isLoading } = useCategories();

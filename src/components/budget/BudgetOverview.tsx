@@ -1,7 +1,7 @@
 import React from 'react';
 import { AlertCircle, TrendingUp, TrendingDown } from 'lucide-react';
-import { MonthlyBudgetSummary, getWarningColor } from '@/lib/utils/budget';
-import { formatCurrency } from '@/lib/utils/currency';
+import { MonthlyBudgetSummary, getWarningColor } from '../../lib/utils/budget';
+import { formatCurrency } from '../../lib/utils/currency';
 
 interface BudgetOverviewProps {
   summary: MonthlyBudgetSummary;

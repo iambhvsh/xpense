@@ -1,7 +1,7 @@
 import React from 'react';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
-import { MonthComparison as MonthComparisonType } from '@/lib/utils/budget';
-import { formatCurrency } from '@/lib/utils/currency';
+import { MonthComparison as MonthComparisonType } from '../../lib/utils/budget';
+import { formatCurrency } from '../../lib/utils/currency';
 
 interface MonthComparisonProps {
   comparison: MonthComparisonType;
