@@ -90,7 +90,7 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
 
       <div
         ref={contentRef}
-        className="relative w-full max-w-[768px] rounded-t-[28px] overflow-hidden shadow-2xl flex flex-col"
+        className="relative w-full max-w-[768px] rounded-t-[28px] overflow-hidden shadow-2xl"
         style={{
           backdropFilter: 'blur(20px) saturate(150%)',
           WebkitBackdropFilter: 'blur(20px) saturate(150%)',
@@ -98,7 +98,9 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
           maxHeight,
           transform: 'translateY(100%)',
           opacity: 0,
-          willChange: 'transform, opacity'
+          willChange: 'transform, opacity',
+          display: 'flex',
+          flexDirection: 'column'
         }}
       >
         <div 
@@ -115,9 +117,11 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
         </div>
 
         <div
-          className="flex-1 overflow-y-auto overscroll-contain pb-20"
+          className="flex-1 overflow-y-auto overscroll-contain no-scrollbar smooth-scroll"
           style={{
-            background: 'linear-gradient(to bottom, rgba(28, 28, 30, 0.7) 0%, rgba(0, 0, 0, 0.95) 40%, rgba(0, 0, 0, 1) 80%)'
+            background: 'linear-gradient(to bottom, rgba(28, 28, 30, 0.7) 0%, rgba(0, 0, 0, 0.95) 40%, rgba(0, 0, 0, 1) 80%)',
+            WebkitOverflowScrolling: 'touch',
+            paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 24px)'
           }}
         >
           {children}
