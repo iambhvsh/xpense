@@ -1,18 +1,18 @@
 import React, { useMemo, useEffect } from 'react';
-import { useTransactions, useCategories, useSetting } from '@/hooks/useDatabase';
+import { useTransactions, useCategories, useSetting } from '../../lib/hooks/useDatabase';
 import { 
   calculateMonthlyBudget, 
   getCurrentMonthTransactions, 
   getPreviousMonthTransactions,
   compareMonths
-} from '@/lib/utils/budget';
-import { BudgetOverview } from '@/components/budget/BudgetOverview';
-import { MonthComparison } from '@/components/budget/MonthComparison';
-import { CategoryBudgetList } from '@/components/budget/CategoryBudgetList';
-import { RecurringExpenses } from '@/components/budget/RecurringExpenses';
-import { BudgetManager } from '@/components/budget/BudgetManager';
-import { Spinner } from '@/components/ui/Spinner';
-import { dbHelpers } from '@/lib/db';
+} from '../../lib/utils/budget';
+import { BudgetOverview } from '../../components/budget/BudgetOverview';
+import { MonthComparison } from '../../components/budget/MonthComparison';
+import { CategoryBudgetList } from '../../components/budget/CategoryBudgetList';
+import { RecurringExpenses } from '../../components/budget/RecurringExpenses';
+import { BudgetManager } from '../../components/budget/BudgetManager';
+import { Spinner } from '../../components/ui/Spinner';
+import { dbHelpers } from '../../lib/db';
 
 export const Budget: React.FC = () => {
   // Process recurring expenses on mount

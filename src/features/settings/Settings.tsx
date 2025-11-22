@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ChevronRight, Trash2, Download, Upload, Database, Info, DollarSign, Calendar, Shield, HelpCircle, Key } from 'lucide-react';
-import { useDatabaseStats, useSetting } from '@/hooks/useDatabase';
-import { dbHelpers } from '@/lib/db';
-import { updateCurrencyCache, updateDateFormatCache } from '@/lib/utils/currency';
-import { updateApiKeyCache } from '@/lib/api/gemini';
-import { CategoryManager } from '@/components/settings/CategoryManager';
-import { useAlert } from '@/components/ui/AlertProvider';
-import { AlertModal } from '@/components/ui/Modal';
-import { BottomSheet } from '@/components/ui/BottomSheet';
+import { useDatabaseStats, useSetting } from '../../lib/hooks/useDatabase';
+import { dbHelpers } from '../../lib/db';
+import { updateCurrencyCache, updateDateFormatCache } from '../../lib/utils/currency';
+import { updateApiKeyCache } from '../../lib/api/gemini';
+import { CategoryManager } from '../../components/settings/CategoryManager';
+import { useAlert } from '../../components/context/AlertProvider';
+import { AlertModal } from '../../components/ui/Modal';
+import { BottomSheet } from '../../components/ui/BottomSheet';
 import appIcon from '../../../assets/icon.png';
 
 interface SettingsProps {
