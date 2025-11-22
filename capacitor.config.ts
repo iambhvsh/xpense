@@ -1,4 +1,4 @@
-import { CapacitorConfig } from '@capacitor/cli';
+import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.xpense.app',
@@ -29,16 +29,10 @@ const config: CapacitorConfig = {
       splashImmersive: true
     },
     Keyboard: {
-      resize: 'body',
-      style: 'dark',
       resizeOnFullScreen: true
     },
     StatusBar: {
-      style: 'dark',
       backgroundColor: '#000000'
-    },
-    Haptics: {
-      // Haptics are enabled by default
     }
   }
 };

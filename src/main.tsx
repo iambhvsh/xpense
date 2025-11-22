@@ -4,20 +4,11 @@ import { Capacitor } from '@capacitor/core';
 import App from './App';
 import './index.css';
 
-// Unregister service worker on native platforms
-if ('serviceWorker' in navigator && Capacitor.isNativePlatform()) {
+// Unregister any existing service workers (cleanup from previous versions)
+if ('serviceWorker' in navigator) {
   navigator.serviceWorker.getRegistrations().then((registrations) => {
     registrations.forEach((registration) => {
       registration.unregister();
-    });
-  });
-}
-
-// Register Service Worker only for web (not native apps)
-if ('serviceWorker' in navigator && !Capacitor.isNativePlatform()) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(() => {
-      // Silently fail - not critical
     });
   });
 }
