@@ -1,9 +1,9 @@
 /**
- * Bottom Sheet - Uses Universal Bottom Sheet
+ * Bottom Sheet - For pickers and simple content
  */
 
 import React from 'react';
-import { UniversalBottomSheet } from './UniversalBottomSheet';
+import { BottomSheetBase } from './BottomSheetBase';
 
 interface BottomSheetProps {
   open: boolean;
@@ -23,7 +23,7 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
   maxHeight = '70vh'
 }) => {
   return (
-    <UniversalBottomSheet
+    <BottomSheetBase
       open={open}
       isClosing={isClosing}
       onClose={onClose}
@@ -33,6 +33,6 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
       doneButtonText="Done"
     >
       {children}
-    </UniversalBottomSheet>
+    </BottomSheetBase>
   );
 };

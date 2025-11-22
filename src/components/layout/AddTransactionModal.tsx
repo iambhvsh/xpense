@@ -1,9 +1,9 @@
 /**
- * Add Transaction Modal - Uses Universal Bottom Sheet
+ * Add Transaction Modal
  */
 
 import React from 'react';
-import { UniversalBottomSheet } from '../ui/UniversalBottomSheet';
+import { BottomSheetBase } from '../ui/BottomSheetBase';
 
 interface AddTransactionModalProps {
   open: boolean;
@@ -19,7 +19,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
   children
 }) => {
   return (
-    <UniversalBottomSheet
+    <BottomSheetBase
       open={open}
       isClosing={isClosing}
       onClose={onClose}
@@ -29,6 +29,6 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
       suspenseFallback
     >
       {children}
-    </UniversalBottomSheet>
+    </BottomSheetBase>
   );
 };

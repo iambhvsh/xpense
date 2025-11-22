@@ -1,5 +1,5 @@
 /**
- * Universal Bottom Sheet Component
+ * Bottom Sheet Base Component
  * Single reusable component for all bottom sheets in the app
  * Uses Web Animations API for smooth transitions
  */
@@ -7,7 +7,7 @@
 import React, { useEffect, useRef, Suspense } from 'react';
 import { Spinner } from './Spinner';
 
-interface UniversalBottomSheetProps {
+interface BottomSheetBaseProps {
   open: boolean;
   isClosing: boolean;
   onClose: () => void;
@@ -25,7 +25,7 @@ const IOS_EASING = 'cubic-bezier(0.4, 0, 0.2, 1)';
 const DURATION_IN = 400;
 const DURATION_OUT = 350;
 
-export const UniversalBottomSheet: React.FC<UniversalBottomSheetProps> = ({
+export const BottomSheetBase: React.FC<BottomSheetBaseProps> = ({
   open,
   isClosing,
   onClose,
