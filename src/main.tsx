@@ -1,10 +1,11 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import { Capacitor } from '@capacitor/core';
 import App from './App';
 import './index.css';
 
-// Register Service Worker for offline-first support
-if ('serviceWorker' in navigator) {
+// Register Service Worker only for web (not native apps)
+if ('serviceWorker' in navigator && !Capacitor.isNativePlatform()) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js').catch(() => {
       // Silently fail - not critical

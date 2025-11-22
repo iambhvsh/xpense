@@ -50,24 +50,31 @@ const App: React.FC = () => {
     }
   }, [dbTransactions, setTransactions]);
 
-  // Initialize native features
+  // Initialize native features - hide splash screen immediately
   useEffect(() => {
-    if (!isInitialized) return;
-
     const initNative = async () => {
       if (isNativePlatform()) {
         try {
           await StatusBar.setStyle({ style: Style.Dark });
           await StatusBar.setBackgroundColor({ color: '#000000' });
           await Keyboard.setAccessoryBarVisible({ isVisible: false });
+          // Hide splash screen as soon as React renders
           await SplashScreen.hide({ fadeOutDuration: 300 });
         } catch (e) {
-          // Silently fail
+          // Silently fail but ensure splash is hidden
+          try {
+            await SplashScreen.hide({ fadeOutDuration: 0 });
+          } catch {}
         }
       }
     };
 
     initNative();
+  }, []);
+
+  // Initialize app data after native setup
+  useEffect(() => {
+    if (!isInitialized) return;
     
     // Initialize currency cache
     import('./lib/utils/currency').then(({ initializeCurrencyCache }) => {
