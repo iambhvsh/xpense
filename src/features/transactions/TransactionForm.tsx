@@ -1,12 +1,12 @@
 import React, { useState, useRef } from 'react';
-import { TransactionRecord } from '@/lib/db';
-import { analyzeReceipt } from '@/lib/api/gemini';
+import { TransactionRecord } from '../../lib/db';
+import { analyzeReceipt } from '../../lib/api/gemini';
 import { ScanLine } from 'lucide-react';
-import { Spinner } from '@/components/ui/Spinner';
-import { getCurrencySymbol } from '@/lib/utils/currency';
-import { useCategories } from '@/hooks/useDatabase';
-import { useAlert } from '@/components/ui/AlertProvider';
-import { haptics, isNativePlatform } from '@/lib/utils/native';
+import { Spinner } from '../../components/ui/Spinner';
+import { getCurrencySymbol } from '../../lib/utils/currency';
+import { useCategories } from '../../lib/hooks/useDatabase';
+import { useAlert } from '../../components/context/AlertProvider';
+import { haptics, isNativePlatform } from '../../lib/utils/native';
 
 interface ExpenseFormProps {
   onAddTransaction: (t: Omit<TransactionRecord, 'id' | 'createdAt' | 'updatedAt'>) => void;
