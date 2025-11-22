@@ -1,5 +1,5 @@
 import React from 'react';
-import { formatCurrency } from '@/lib/utils/currency';
+import { formatCurrency } from '../../lib/utils/currency';
 
 interface StatCardProps {
   label: string;

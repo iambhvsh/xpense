@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { CategoryBudgetStatus, getWarningColor } from '@/lib/utils/budget';
-import { formatCurrency } from '@/lib/utils/currency';
-import { TransactionRecord } from '@/lib/db';
+import { CategoryBudgetStatus, getWarningColor } from '../../lib/utils/budget';
+import { formatCurrency } from '../../lib/utils/currency';
+import { TransactionRecord } from '../../lib/db';
 import { Pencil } from 'lucide-react';
-import { db } from '@/lib/db';
+import { db } from '../../lib/db';
 
 interface CategoryBudgetListProps {
   categoryBreakdown: CategoryBudgetStatus[];

@@ -1,4 +1,4 @@
-import { TransactionRecord } from '@/lib/db';
+import { TransactionRecord } from '../lib/db';
 
 /**
  * CSV Import/Export Utilities - Web Worker Edition

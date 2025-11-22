@@ -3,7 +3,7 @@
  * Formats data BEFORE render to eliminate formatting in render loops
  */
 
-import { TransactionRecord } from '@/lib/db';
+import { TransactionRecord } from '../lib/db';
 
 export interface FormattedTransaction extends TransactionRecord {
   formattedAmount: string;

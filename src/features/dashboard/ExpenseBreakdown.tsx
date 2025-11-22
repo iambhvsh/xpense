@@ -12,8 +12,8 @@ import {
   ChartOptions,
   ChartData
 } from 'chart.js';
-import { Category } from '@/types';
-import { CATEGORY_COLORS } from '@/lib/constants';
+import { Category } from '../../types';
+import { CATEGORY_COLORS } from '../../lib/constants';
 
 ChartJS.register(ArcElement, DoughnutController, Tooltip);
 

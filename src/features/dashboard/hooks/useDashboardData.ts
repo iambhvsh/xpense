@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { TransactionRecord } from '@/lib/db';
+import { TransactionRecord } from '../../../lib/db';
 
 export const useDashboardData = (transactions: TransactionRecord[]) => {
   const stats = useMemo(() => {

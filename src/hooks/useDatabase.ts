@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { db, dbHelpers, TransactionRecord, initializeDatabase } from '@/lib/db';
+import { db, dbHelpers, TransactionRecord, initializeDatabase } from '../lib/db';
 import { useLiveQuery } from 'dexie-react-hooks';
 
 // Hook for transactions
@@ -114,11 +114,11 @@ export function useRecurringExpenses() {
     []
   );
 
-  const addRecurringExpense = useCallback(async (expense: Omit<import('@/lib/db').RecurringExpenseRecord, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const addRecurringExpense = useCallback(async (expense: Omit<import('../lib/db').RecurringExpenseRecord, 'id' | 'createdAt' | 'updatedAt'>) => {
     return await dbHelpers.addRecurringExpense(expense);
   }, []);
 
-  const updateRecurringExpense = useCallback(async (id: number, updates: Partial<import('@/lib/db').RecurringExpenseRecord>) => {
+  const updateRecurringExpense = useCallback(async (id: number, updates: Partial<import('../lib/db').RecurringExpenseRecord>) => {
     return await dbHelpers.updateRecurringExpense(id, updates);
   }, []);
 

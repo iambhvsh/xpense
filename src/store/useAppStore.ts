@@ -4,7 +4,7 @@
  */
 
 import { create } from 'zustand';
-import { TransactionRecord, CategoryRecord } from '@/lib/db';
+import { TransactionRecord, CategoryRecord } from '../lib/db';
 
 interface AppState {
   // Data

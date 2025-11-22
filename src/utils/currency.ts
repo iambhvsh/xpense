@@ -1,4 +1,4 @@
-import { dbHelpers } from '@/lib/db';
+import { dbHelpers } from '../lib/db';
 
 // Cache for currency and date format to avoid async calls on every render
 let currencyCache: string | null = null;

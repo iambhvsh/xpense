@@ -3,27 +3,27 @@ import { App as CapacitorApp } from '@capacitor/app';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import { Keyboard } from '@capacitor/keyboard';
 import { SplashScreen } from '@capacitor/splash-screen';
-import { TransactionRecord } from '@/lib/db';
-import { useDatabaseInit, useTransactions } from '@/hooks/useDatabase';
-import { dbHelpers, seedDefaultCategories } from '@/lib/db';
-import { useAppStore } from '@/store/useAppStore';
-import { AlertProvider } from '@/components/ui/AlertProvider';
-import { ErrorBoundary } from '@/utils/errorBoundary';
-import { isNativePlatform, haptics } from '@/utils/native';
-import { BottomTabBar } from '@/components/layout/BottomTabBar';
-import { PageHeader } from '@/components/layout/PageHeader';
-import { AddTransactionModal } from '@/components/layout/AddTransactionModal';
-import { Spinner } from '@/components/ui/Spinner';
-import { AppTab } from '@/app/navigation';
+import { TransactionRecord } from '../lib/db';
+import { useDatabaseInit, useTransactions } from '../hooks/useDatabase';
+import { dbHelpers, seedDefaultCategories } from '../lib/db';
+import { useAppStore } from '../store/useAppStore';
+import { AlertProvider } from '../components/ui/AlertProvider';
+import { ErrorBoundary } from '../utils/errorBoundary';
+import { isNativePlatform, haptics } from '../utils/native';
+import { BottomTabBar } from '../components/layout/BottomTabBar';
+import { PageHeader } from '../components/layout/PageHeader';
+import { AddTransactionModal } from '../components/layout/AddTransactionModal';
+import { Spinner } from '../components/ui/Spinner';
+import { AppTab } from './navigation';
 
 // Lazy load features
-const Dashboard = lazy(() => import('@/features/dashboard/Dashboard').then(m => ({ default: m.Dashboard })));
-const TransactionForm = lazy(() => import('@/features/transactions/TransactionForm').then(m => ({ default: m.TransactionForm })));
-const TransactionList = lazy(() => import('@/features/transactions/TransactionList').then(m => ({ default: m.TransactionList })));
-const Budget = lazy(() => import('@/features/budget/Budget').then(m => ({ default: m.Budget })));
-const AiInsights = lazy(() => import('@/features/insights/AiInsights').then(m => ({ default: m.AiInsights })));
-const SettingsPage = lazy(() => import('@/features/settings/Settings').then(m => ({ default: m.Settings })));
-const Onboarding = lazy(() => import('@/features/onboarding/Onboarding').then(m => ({ default: m.Onboarding })));
+const Dashboard = lazy(() => import('../features/dashboard/Dashboard').then(m => ({ default: m.Dashboard })));
+const TransactionForm = lazy(() => import('../features/transactions/TransactionForm').then(m => ({ default: m.TransactionForm })));
+const TransactionList = lazy(() => import('../features/transactions/TransactionList').then(m => ({ default: m.TransactionList })));
+const Budget = lazy(() => import('../features/budget/Budget').then(m => ({ default: m.Budget })));
+const AiInsights = lazy(() => import('../features/insights/AiInsights').then(m => ({ default: m.AiInsights })));
+const SettingsPage = lazy(() => import('../features/settings/Settings').then(m => ({ default: m.Settings })));
+const Onboarding = lazy(() => import('../features/onboarding/Onboarding').then(m => ({ default: m.Onboarding })));
 
 const App: React.FC = () => {
   const { isInitialized } = useDatabaseInit();
@@ -70,7 +70,7 @@ const App: React.FC = () => {
     initNative();
     
     // Initialize currency cache
-    import('@/utils/currency').then(({ initializeCurrencyCache }) => {
+    import('../utils/currency').then(({ initializeCurrencyCache }) => {
       initializeCurrencyCache();
     });
     
