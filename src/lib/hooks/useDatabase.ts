@@ -83,6 +83,8 @@ export function useDatabaseInit() {
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+    
     const init = async () => {
       try {
         // Open database
@@ -95,10 +97,26 @@ export function useDatabaseInit() {
       } catch (err) {
         console.error('Database initialization failed:', err);
         setError(err as Error);
+        // Still mark as initialized to prevent app from being stuck
+        // The app can work with an empty database
+        setIsInitialized(true);
       }
     };
 
+    // Set a timeout to force initialization after 3 seconds
+    // This prevents the app from being stuck on splash screen
+    timeoutId = setTimeout(() => {
+      if (!isInitialized) {
+        console.warn('Database initialization timeout - forcing app to continue');
+        setIsInitialized(true);
+      }
+    }, 3000);
+
     init();
+
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
   }, []);
 
   return {
