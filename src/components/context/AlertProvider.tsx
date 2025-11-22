@@ -25,7 +25,6 @@ export const AlertProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const showAlert = useCallback((options: AlertOptions) => {
     // Don't show alert if message is empty/undefined
     if (!options.message && !options.title) {
-      console.warn('showAlert called with no title or message');
       return;
     }
     
@@ -49,7 +48,7 @@ export const AlertProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       try {
         await action.onPress?.();
       } catch (error) {
-        console.error('Alert action failed:', error);
+        // Action failed silently
       } finally {
         setProcessing(false);
         setAlertState(null);

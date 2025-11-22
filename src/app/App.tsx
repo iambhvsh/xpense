@@ -7,7 +7,7 @@ import { TransactionRecord } from '../lib/db';
 import { useDatabaseInit, useTransactions } from '../hooks/useDatabase';
 import { dbHelpers, seedDefaultCategories } from '../lib/db';
 import { useAppStore } from '../store/useAppStore';
-import { AlertProvider } from '../components/ui/AlertProvider';
+import { AlertProvider } from '../components/context/AlertProvider';
 import { ErrorBoundary } from '../utils/errorBoundary';
 import { isNativePlatform, haptics } from '../utils/native';
 import { BottomTabBar } from '../components/layout/BottomTabBar';

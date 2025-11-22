@@ -3,7 +3,7 @@ import { Plus, Pencil, Trash2, Clock, SkipForward } from 'lucide-react';
 import { useRecurringExpenses, useCategories } from '../../hooks/useDatabase';
 import { formatCurrency } from '../../lib/utils/currency';
 import { RecurringExpenseRecord } from '../../lib/db';
-import { useAlert } from '../../components/ui/AlertProvider';
+import { useAlert } from '../../components/context/AlertProvider';
 
 export const RecurringExpenses: React.FC = () => {
   const { expenses, addRecurringExpense, updateRecurringExpense, deleteRecurringExpense, skipOnce, isLoading } = useRecurringExpenses();

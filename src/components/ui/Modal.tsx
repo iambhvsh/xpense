@@ -107,7 +107,7 @@ export const AlertModal: React.FC<AlertModalProps> = ({
             willChange: 'transform, opacity'
           }}
         >
-          <div className="px-4 pt-5 pb-4 text-center">
+          <div className="px-4 pt-5 pb-4 text-center max-h-[60vh] overflow-y-auto overscroll-contain">
             {title && (
               <h3 className="text-[17px] font-semibold text-white tracking-[-0.41px] mb-2">
                 {title}
@@ -120,25 +120,25 @@ export const AlertModal: React.FC<AlertModalProps> = ({
             )}
           </div>
 
-          {actionButtons.map((action, index) => {
-            const isDanger = action.variant === 'danger';
-            return (
-              <div
-                key={`${action.label}-${index}`}
-                className="border-t border-[#38383A]"
-              >
-                <button
-                  disabled={processing}
-                  onClick={() => handleAction(action)}
-                  className={`w-full py-3 text-[17px] font-semibold tracking-[-0.41px] transition-colors ${
-                    processing ? 'opacity-40 cursor-not-allowed' : 'active:bg-[#2C2C2E]'
-                  } ${isDanger ? 'text-[#FF3B30]' : 'text-[#007AFF]'}`}
-                >
-                  {action.label}
-                </button>
-              </div>
-            );
-          })}
+          <div className="border-t border-[#38383A]">
+              {actionButtons.map((action, index) => {
+              const isDanger = action.variant === 'danger';
+              return (
+                <React.Fragment key={`${action.label}-${index}`}>
+                  {index > 0 && <div className="h-[0.5px] bg-[#38383A]" />}
+                  <button
+                    disabled={processing}
+                    onClick={() => handleAction(action)}
+                    className={`w-full py-3 text-[17px] font-semibold tracking-[-0.41px] transition-colors ${
+                      processing ? 'opacity-40 cursor-not-allowed' : 'active:bg-[#2C2C2E]'
+                    } ${isDanger ? 'text-[#FF3B30]' : 'text-[#007AFF]'}`}
+                  >
+                    {action.label}
+                  </button>
+                </React.Fragment>
+              );
+            })}
+          </div>
         </div>
       </div>
     </div>
