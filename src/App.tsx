@@ -87,63 +87,7 @@ const App: React.FC = () => {
     });
   }, [isInitialized]);
 
-  // Browser history navigation
-  useEffect(() => {
-    if (!isInitialized || showOnboarding) return;
-
-    const hash = window.location.hash.slice(1) as AppTab;
-    const validTabs: AppTab[] = ['overview', 'history', 'budget', 'settings'];
-    const initialTab = validTabs.includes(hash) ? hash : 'overview';
-    
-    if (initialTab !== activeTab) {
-      setActiveTab(initialTab);
-    }
-
-    if (!window.location.hash) {
-      window.history.replaceState(null, '', '#overview');
-    }
-
-    const handlePopState = () => {
-      if (isAddModalOpen) {
-        setIsAddModalOpen(false);
-        return;
-      }
-      
-      const newHash = window.location.hash.slice(1) as AppTab;
-      const newTab = validTabs.includes(newHash) ? newHash : 'overview';
-      
-      if (newTab !== activeTab) {
-        setActiveTab(newTab);
-      }
-    };
-
-    window.addEventListener('popstate', handlePopState);
-
-    // Android back button
-    const backButtonListener = CapacitorApp.addListener('backButton', ({ canGoBack }) => {
-      if (isAddModalOpen) {
-        setIsAddModalOpen(false);
-        return;
-      }
-
-      if (activeTab !== 'overview') {
-        window.history.back();
-        return;
-      }
-
-      if (!canGoBack) {
-        CapacitorApp.exitApp();
-      } else {
-        window.history.back();
-      }
-    });
-
-    return () => {
-      window.removeEventListener('popstate', handlePopState);
-      backButtonListener.then(listener => listener.remove());
-    };
-  }, [isInitialized, showOnboarding, activeTab, isAddModalOpen]);
-
+  // Define handlers before they're used in effects
   const addTransaction = useCallback(async (t: Omit<TransactionRecord, 'id' | 'createdAt' | 'updatedAt'>) => {
     await addDbTransaction(t);
   }, [addDbTransaction]);
@@ -175,7 +119,7 @@ const App: React.FC = () => {
     }
     setIsAddModalOpen(true);
     window.history.pushState({ modal: 'add-transaction' }, '', window.location.href);
-  }, []);
+  }, [setIsAddModalOpen]);
 
   const handleCloseModal = useCallback(() => {
     if (isNativePlatform()) {
@@ -184,13 +128,71 @@ const App: React.FC = () => {
     
     setIsClosingAddModal(true);
     setTimeout(() => {
+      setIsAddModalOpen(false);
+      setIsClosingAddModal(false);
+      // Clean up history state after animation
       if (window.history.state?.modal === 'add-transaction') {
         window.history.back();
       }
-      setIsAddModalOpen(false);
-      setIsClosingAddModal(false);
     }, 350);
   }, [setIsAddModalOpen]);
+
+  // Browser history navigation
+  useEffect(() => {
+    if (!isInitialized || showOnboarding) return;
+
+    const hash = window.location.hash.slice(1) as AppTab;
+    const validTabs: AppTab[] = ['overview', 'history', 'budget', 'settings'];
+    const initialTab = validTabs.includes(hash) ? hash : 'overview';
+    
+    if (initialTab !== activeTab) {
+      setActiveTab(initialTab);
+    }
+
+    if (!window.location.hash) {
+      window.history.replaceState(null, '', '#overview');
+    }
+
+    const handlePopState = () => {
+      if (isAddModalOpen) {
+        handleCloseModal();
+        return;
+      }
+      
+      const newHash = window.location.hash.slice(1) as AppTab;
+      const newTab = validTabs.includes(newHash) ? newHash : 'overview';
+      
+      if (newTab !== activeTab) {
+        setActiveTab(newTab);
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+
+    // Android back button
+    const backButtonListener = CapacitorApp.addListener('backButton', ({ canGoBack }) => {
+      if (isAddModalOpen) {
+        handleCloseModal();
+        return;
+      }
+
+      if (activeTab !== 'overview') {
+        window.history.back();
+        return;
+      }
+
+      if (!canGoBack) {
+        CapacitorApp.exitApp();
+      } else {
+        window.history.back();
+      }
+    });
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      backButtonListener.then(listener => listener.remove());
+    };
+  }, [isInitialized, showOnboarding, activeTab, isAddModalOpen, handleCloseModal, setActiveTab]);
 
   if (!isInitialized) {
     return (
@@ -241,7 +243,14 @@ const App: React.FC = () => {
                   </div>
                 }
               >
-                <div key={activeTab} className="min-h-[200px] animate-tab-fade-in">
+                <div 
+                  key={activeTab} 
+                  className="min-h-[200px]"
+                  style={{ 
+                    willChange: 'transform, opacity',
+                    animation: 'tabFadeIn 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards'
+                  }}
+                >
                   {activeTab === 'overview' && (
                     <>
                       <Dashboard transactions={dbTransactions} />

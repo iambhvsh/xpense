@@ -98,7 +98,7 @@ const App: React.FC = () => {
 
     const handlePopState = () => {
       if (isAddModalOpen) {
-        setIsAddModalOpen(false);
+        handleCloseModal();
         return;
       }
       
@@ -115,7 +115,7 @@ const App: React.FC = () => {
     // Android back button
     const backButtonListener = CapacitorApp.addListener('backButton', ({ canGoBack }) => {
       if (isAddModalOpen) {
-        setIsAddModalOpen(false);
+        handleCloseModal();
         return;
       }
 
@@ -135,7 +135,7 @@ const App: React.FC = () => {
       window.removeEventListener('popstate', handlePopState);
       backButtonListener.then(listener => listener.remove());
     };
-  }, [isInitialized, showOnboarding, activeTab, isAddModalOpen]);
+  }, [isInitialized, showOnboarding, activeTab, isAddModalOpen, handleCloseModal]);
 
   const addTransaction = useCallback(async (t: Omit<TransactionRecord, 'id' | 'createdAt' | 'updatedAt'>) => {
     await addDbTransaction(t);
@@ -177,11 +177,12 @@ const App: React.FC = () => {
     
     setIsClosingAddModal(true);
     setTimeout(() => {
+      setIsAddModalOpen(false);
+      setIsClosingAddModal(false);
+      // Clean up history state after animation
       if (window.history.state?.modal === 'add-transaction') {
         window.history.back();
       }
-      setIsAddModalOpen(false);
-      setIsClosingAddModal(false);
     }, 350);
   }, [setIsAddModalOpen]);
 
@@ -234,7 +235,14 @@ const App: React.FC = () => {
                   </div>
                 }
               >
-                <div key={activeTab} className="min-h-[200px] animate-tab-fade-in">
+                <div 
+                  key={activeTab} 
+                  className="min-h-[200px]"
+                  style={{ 
+                    willChange: 'transform, opacity',
+                    animation: 'tabFadeIn 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards'
+                  }}
+                >
                   {activeTab === 'overview' && (
                     <>
                       <Dashboard transactions={dbTransactions} />
