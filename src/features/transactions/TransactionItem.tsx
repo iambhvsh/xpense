@@ -1,8 +1,8 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { TransactionRecord } from '@/lib/db';
-import { Category } from '@/types';
-import { CATEGORY_COLORS } from '@/lib/constants';
-import { formatCurrency, formatDate } from '@/lib/utils/currency';
+import { TransactionRecord } from '../../lib/db';
+import { Category } from '../../types';
+import { CATEGORY_COLORS } from '../../lib/constants';
+import { formatCurrency, formatDate } from '../../lib/utils/currency';
 import { Trash2, Coffee, ShoppingBag, Zap, Car, Activity, DollarSign, Film, MoreHorizontal, ChevronDown, Calendar, Tag, FileText } from 'lucide-react';
 
 interface TransactionItemProps {

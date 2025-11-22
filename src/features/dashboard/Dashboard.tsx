@@ -1,8 +1,8 @@
 import React from 'react';
-import { TransactionRecord } from '@/lib/db';
-import { StatCard } from '@/features/dashboard/StatCard';
-import { ExpenseBreakdown } from '@/features/dashboard/ExpenseBreakdown';
-import { ActivityChart } from '@/features/dashboard/ActivityChart';
+import { TransactionRecord } from '../../lib/db';
+import { StatCard } from './StatCard';
+import { ExpenseBreakdown } from './ExpenseBreakdown';
+import { ActivityChart } from './ActivityChart';
 import { useDashboardData } from './useDashboardData';
 
 interface DashboardProps {

@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Plus, Pencil, Trash2, Check, X } from 'lucide-react';
-import { useCategories } from '@/hooks/useDatabase';
-import { useAlert } from '@/components/ui/AlertProvider';
-import { Spinner } from '@/components/ui/Spinner';
+import { useCategories } from '../../lib/hooks/useDatabase';
+import { useAlert } from '../../components/context/AlertProvider';
+import { Spinner } from '../../components/ui/Spinner';
 
 export const CategoryManager: React.FC = () => {
   const { categories, addCategory, deleteCategory, isLoading } = useCategories();
@@ -37,7 +37,7 @@ export const CategoryManager: React.FC = () => {
     if (!editingName.trim() || editingId === null) return;
     
     try {
-      const { db } = await import('@/lib/db');
+      const { db } = await import('../../lib/db');
       await db.categories.update(editingId, { 
         name: editingName.trim()
       });

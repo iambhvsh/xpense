@@ -1,9 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { marked } from 'marked';
-import { generateInsights } from '@/lib/api/gemini';
-import { TransactionRecord } from '@/lib/db';
+import { generateInsights } from '../../lib/api/gemini';
+import { TransactionRecord } from '../../lib/db';
 import { Sparkles } from 'lucide-react';
-import { Spinner } from '@/components/ui/Spinner';
+import { Spinner } from '../../components/ui/Spinner';
 
 interface AiInsightsProps {
   transactions: TransactionRecord[];

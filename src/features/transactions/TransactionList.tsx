@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useCallback } from 'react';
-import { TransactionRecord } from '@/lib/db';
-import { TransactionItem } from '@/components/transactions/TransactionItem';
-import { EmptyState } from '@/components/ui/EmptyState';
+import { TransactionRecord } from '../../lib/db';
+import { TransactionItem } from '../../components/transactions/TransactionItem';
+import { EmptyState } from '../../components/ui/EmptyState';
 import { ShoppingBag } from 'lucide-react';
 
 interface TransactionListProps {
