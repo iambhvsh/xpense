@@ -122,7 +122,7 @@ export const BudgetChart: React.FC<BudgetChartProps> = React.memo(({ data }) => 
 
       hasInitialized.current = true;
     } catch (error) {
-      console.error('Chart creation error:', error);
+      // Chart creation failed silently
     }
 
     return () => {

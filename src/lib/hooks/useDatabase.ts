@@ -95,7 +95,6 @@ export function useDatabaseInit() {
         
         setIsInitialized(true);
       } catch (err) {
-        console.error('Database initialization failed:', err);
         setError(err as Error);
         // Still mark as initialized to prevent app from being stuck
         // The app can work with an empty database
@@ -107,7 +106,6 @@ export function useDatabaseInit() {
     // This prevents the app from being stuck on splash screen
     timeoutId = setTimeout(() => {
       if (!isInitialized) {
-        console.warn('Database initialization timeout - forcing app to continue');
         setIsInitialized(true);
       }
     }, 3000);

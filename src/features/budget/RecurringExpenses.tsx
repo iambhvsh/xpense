@@ -57,7 +57,6 @@ export const RecurringExpenses: React.FC = () => {
       }
       resetForm();
     } catch (error) {
-      console.error('Failed to save recurring expense:', error);
       showAlert({
         title: 'Save Failed',
         message: 'Could not save recurring expense. Please try again.'
@@ -91,7 +90,6 @@ export const RecurringExpenses: React.FC = () => {
             try {
               await deleteRecurringExpense(id);
             } catch (error) {
-              console.error('Failed to delete recurring expense:', error);
               setTimeout(() => {
                 showAlert({
                   title: 'Delete Failed',

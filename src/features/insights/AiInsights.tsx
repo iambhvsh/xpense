@@ -49,7 +49,6 @@ export const AiInsights: React.FC<AiInsightsProps> = ({ transactions }) => {
       
       return html;
     } catch (error) {
-      console.error('Error parsing markdown:', error);
       return advice;
     }
   }, [advice]);

@@ -76,14 +76,13 @@ export const Settings: React.FC<SettingsProps> = ({ onClearData }) => {
   const handleExportData = async () => {
     try {
       const csvContent = await dbHelpers.exportToCSV();
-      const { downloadCSV } = await import('@/lib/utils/csv');
+      const { downloadCSV } = await import('../../lib/utils/csv');
       const filename = `xpense-transactions-${new Date().toISOString().split('T')[0]}.csv`;
       await downloadCSV(csvContent, filename);
       
       setExportSuccess(true);
       setTimeout(() => setExportSuccess(false), 2000);
     } catch (error) {
-      console.error('Export failed:', error);
       showAlert({
         title: 'Export Failed',
         message: error instanceof Error ? error.message : 'Failed to export data. Please try again.'
@@ -119,7 +118,6 @@ export const Settings: React.FC<SettingsProps> = ({ onClearData }) => {
               message
             });
           } catch (error) {
-            console.error('Import failed:', error);
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
             showAlert({
               title: 'Import Failed',

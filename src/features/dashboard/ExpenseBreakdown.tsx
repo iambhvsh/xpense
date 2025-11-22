@@ -104,7 +104,7 @@ export const ExpenseBreakdown: React.FC<ExpenseBreakdownProps> = React.memo(({ d
 
       hasInitialized.current = true;
     } catch (error) {
-      console.error('Chart creation error:', error);
+      // Chart creation failed silently
     }
 
     return () => {

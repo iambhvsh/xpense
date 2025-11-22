@@ -24,7 +24,6 @@ export const BudgetManager: React.FC = () => {
       setEditingId(null);
       setEditingBudget('');
     } catch (error) {
-      console.error('Failed to update budget:', error);
       showAlert({
         title: 'Update Failed',
         message: 'Could not update budget. Please try again.'

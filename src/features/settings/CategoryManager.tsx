@@ -20,7 +20,6 @@ export const CategoryManager: React.FC = () => {
       setNewCategoryName('');
       setIsAdding(false);
     } catch (error) {
-      console.error('Failed to add category:', error);
       showAlert({
         title: 'Add Failed',
         message: 'Could not add category. Please try again.'
@@ -44,7 +43,6 @@ export const CategoryManager: React.FC = () => {
       setEditingId(null);
       setEditingName('');
     } catch (error) {
-      console.error('Failed to update category:', error);
       showAlert({
         title: 'Update Failed',
         message: 'Could not rename category. Please try again.'
@@ -64,7 +62,6 @@ export const CategoryManager: React.FC = () => {
             try {
               await deleteCategory(id);
             } catch (error) {
-              console.error('Failed to delete category:', error);
               setTimeout(() => {
                 showAlert({
                   title: 'Delete Failed',

@@ -139,7 +139,7 @@ export async function initializeDatabase(): Promise<void> {
       }
     }
   } catch (error) {
-    console.error('Database initialization failed:', error);
+    // Database initialization failed silently
   }
 }
 

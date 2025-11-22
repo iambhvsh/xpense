@@ -20,7 +20,6 @@ export const CategoryManager: React.FC = () => {
       setNewCategoryName('');
       setIsAdding(false);
     } catch (error) {
-      console.error('Failed to add category:', error);
       showAlert({
         title: 'Add Failed',
         message: 'Could not add category. Please try again.'
@@ -37,14 +36,13 @@ export const CategoryManager: React.FC = () => {
     if (!editingName.trim() || editingId === null) return;
     
     try {
-      const { db } = await import('@/lib/db');
+      const { db } = await import('../../lib/db');
       await db.categories.update(editingId, { 
         name: editingName.trim()
       });
       setEditingId(null);
       setEditingName('');
     } catch (error) {
-      console.error('Failed to update category:', error);
       showAlert({
         title: 'Update Failed',
         message: 'Could not rename category. Please try again.'

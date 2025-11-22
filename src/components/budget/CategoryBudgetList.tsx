@@ -29,7 +29,7 @@ export const CategoryBudgetList: React.FC<CategoryBudgetListProps> = ({
       }
       setEditingId(null);
     } catch (error) {
-      console.error('Failed to update budget:', error);
+      // Failed to update budget silently
     }
   };
 

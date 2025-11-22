@@ -184,7 +184,7 @@ export const ActivityChart: React.FC<ActivityChartProps> = React.memo(({ data })
 
       hasInitialized.current = true;
     } catch (error) {
-      console.error('Chart creation error:', error);
+      // Chart creation failed silently
     }
 
     return () => {
