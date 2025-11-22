@@ -1,20 +1,22 @@
 /**
- * Service Worker for Offline-First Support
- * Caches static assets for faster cold starts
+ * Service Worker for Offline-First Support (Web Only)
+ * Note: This is disabled for native apps via Capacitor check in main.tsx
  */
 
-const CACHE_NAME = 'xpense-v1';
+const CACHE_NAME = 'xpense-v2';
 const STATIC_ASSETS = [
   '/',
-  '/index.html',
-  '/manifest.json'
+  '/index.html'
 ];
 
 // Install event - cache static assets
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(STATIC_ASSETS);
+      // Try to cache assets, but don't fail if some are missing
+      return cache.addAll(STATIC_ASSETS).catch((err) => {
+        console.warn('Failed to cache some assets:', err);
+      });
     })
   );
   self.skipWaiting();
@@ -45,13 +47,13 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        // Clone response before caching
-        const responseToCache = response.clone();
-        
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, responseToCache);
-        });
-        
+        // Only cache successful responses
+        if (response.status === 200) {
+          const responseToCache = response.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseToCache);
+          });
+        }
         return response;
       })
       .catch(() => {
