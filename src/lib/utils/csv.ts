@@ -1,4 +1,7 @@
 import { TransactionRecord } from '../db';
+import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
+import { Share } from '@capacitor/share';
+import { Capacitor } from '@capacitor/core';
 
 /**
  * CSV Import/Export Utilities - Web Worker Edition
@@ -52,6 +55,33 @@ export function exportToCSV(transactions: TransactionRecord[]): Promise<string> 
  * Download CSV file
  */
 export async function downloadCSV(csvContent: string, filename = 'xpense-transactions.csv'): Promise<void> {
+  // If running on a native platform (Android/iOS), use Capacitor Filesystem and Share
+  if (Capacitor.isNativePlatform()) {
+    try {
+      // Write the file to the cache directory
+      const result = await Filesystem.writeFile({
+        path: filename,
+        data: csvContent,
+        directory: Directory.Cache,
+        encoding: Encoding.UTF8
+      });
+
+      // Share the file
+      await Share.share({
+        title: 'Export CSV',
+        text: 'Here is your transaction export',
+        url: result.uri,
+        dialogTitle: 'Export CSV'
+      });
+      return;
+    } catch (error) {
+      console.error('Error saving/sharing file on native platform:', error);
+      // If sharing fails, we might still want to try the web fallback or just alert the user
+      // But usually if this fails, the web fallback won't work either in a WebView context
+      throw error;
+    }
+  }
+
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   
   // Try modern File System Access API first (works on Android Chrome)
