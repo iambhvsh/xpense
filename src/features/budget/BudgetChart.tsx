@@ -72,11 +72,11 @@ export const BudgetChart: React.FC<BudgetChartProps> = React.memo(({ data }) => 
         cornerRadius: 12,
         titleFont: {
           size: 11,
-          weight: '600'
+          weight: 'bold'
         },
         bodyFont: {
           size: 13,
-          weight: '600'
+          weight: 'bold'
         },
         displayColors: true,
         boxWidth: 8,

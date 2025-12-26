@@ -1,4 +1,4 @@
-import { Haptics, ImpactStyle } from '@capacitor/haptics';
+import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
 
 /**
@@ -45,7 +45,7 @@ export const haptics = {
   success: async () => {
     if (!isNative) return;
     try {
-      await Haptics.notification({ type: 'SUCCESS' });
+      await Haptics.notification({ type: NotificationType.Success });
     } catch (e) {
       // Silently fail on unsupported devices
     }
@@ -55,7 +55,7 @@ export const haptics = {
   warning: async () => {
     if (!isNative) return;
     try {
-      await Haptics.notification({ type: 'WARNING' });
+      await Haptics.notification({ type: NotificationType.Warning });
     } catch (e) {
       // Silently fail on unsupported devices
     }
@@ -65,7 +65,7 @@ export const haptics = {
   error: async () => {
     if (!isNative) return;
     try {
-      await Haptics.notification({ type: 'ERROR' });
+      await Haptics.notification({ type: NotificationType.Error });
     } catch (e) {
       // Silently fail on unsupported devices
     }

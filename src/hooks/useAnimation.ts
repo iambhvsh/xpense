@@ -22,19 +22,19 @@ export function useAnimation() {
 
       switch (type) {
         case 'fadeIn':
-          animation = fadeIn(element, duration);
+          animation = fadeIn(element, duration || DURATION.NORMAL);
           break;
         case 'fadeOut':
-          animation = fadeOut(element, duration);
+          animation = fadeOut(element, duration || DURATION.FAST);
           break;
         case 'slideUp':
-          animation = slideUp(element, duration);
+          animation = slideUp(element, duration || DURATION.MODAL);
           break;
         case 'slideDown':
-          animation = slideDown(element, duration);
+          animation = slideDown(element, duration || DURATION.SLOW);
           break;
         case 'scaleIn':
-          animation = scaleIn(element, duration);
+          animation = scaleIn(element, duration || DURATION.NORMAL);
           break;
         default:
           return;

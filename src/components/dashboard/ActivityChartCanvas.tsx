@@ -81,7 +81,7 @@ export const ActivityChart: React.FC<ActivityChartProps> = React.memo(({ data })
           color: '#8E8E93',
           font: {
             size: 11,
-            weight: '600'
+            weight: 'bold'
           }
         },
         border: {
@@ -98,7 +98,7 @@ export const ActivityChart: React.FC<ActivityChartProps> = React.memo(({ data })
           color: '#636366',
           font: {
             size: 10,
-            weight: '500'
+            weight: 'normal'
           },
           callback: (value) => {
             if (value === 0) return '0';
@@ -122,11 +122,11 @@ export const ActivityChart: React.FC<ActivityChartProps> = React.memo(({ data })
         cornerRadius: 12,
         titleFont: {
           size: 11,
-          weight: '600'
+          weight: 'bold'
         },
         bodyFont: {
           size: 13,
-          weight: '600'
+          weight: 'bold'
         },
         displayColors: false,
         callbacks: {

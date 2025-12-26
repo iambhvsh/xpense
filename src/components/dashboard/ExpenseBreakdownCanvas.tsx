@@ -61,11 +61,11 @@ export const ExpenseBreakdown: React.FC<ExpenseBreakdownProps> = React.memo(({ d
         cornerRadius: 16,
         titleFont: {
           size: 13,
-          weight: '600'
+          weight: 'bold'
         },
         bodyFont: {
           size: 15,
-          weight: '600'
+          weight: 'bold'
         },
         displayColors: false,
         callbacks: {
