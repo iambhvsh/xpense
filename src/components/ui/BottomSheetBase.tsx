@@ -104,7 +104,7 @@ export const BottomSheetBase: React.FC<BottomSheetBaseProps> = ({
   ) : children;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center">
+    <div className="fixed inset-0 z-[100] flex items-end justify-center">
       <div
         ref={backdropRef}
         className="absolute inset-0 bg-black/50"

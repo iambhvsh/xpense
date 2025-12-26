@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Plus, Pencil, Trash2, Clock, SkipForward } from 'lucide-react';
-import { useRecurringExpenses, useCategories } from '../../hooks/useDatabase';
+import { useRecurringExpenses, useCategories } from '../../lib/hooks/useDatabase';
 import { formatCurrency } from '../../lib/utils/currency';
 import { RecurringExpenseRecord } from '../../lib/db';
 import { useAlert } from '../../components/context/AlertProvider';

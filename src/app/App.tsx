@@ -4,12 +4,12 @@ import { StatusBar, Style } from '@capacitor/status-bar';
 import { Keyboard } from '@capacitor/keyboard';
 import { SplashScreen } from '@capacitor/splash-screen';
 import { TransactionRecord } from '../lib/db';
-import { useDatabaseInit, useTransactions } from '../hooks/useDatabase';
+import { useDatabaseInit, useTransactions } from '../lib/hooks/useDatabase';
 import { dbHelpers, seedDefaultCategories } from '../lib/db';
 import { useAppStore } from '../store/useAppStore';
 import { AlertProvider } from '../components/context/AlertProvider';
-import { ErrorBoundary } from '../utils/errorBoundary';
-import { isNativePlatform, haptics } from '../utils/native';
+import { ErrorBoundary } from '../lib/utils/errorBoundary';
+import { isNativePlatform, haptics } from '../lib/utils/native';
 import { BottomTabBar } from '../components/layout/BottomTabBar';
 import { PageHeader } from '../components/layout/PageHeader';
 import { AddTransactionModal } from '../components/layout/AddTransactionModal';
@@ -70,7 +70,7 @@ const App: React.FC = () => {
     initNative();
     
     // Initialize currency cache
-    import('../utils/currency').then(({ initializeCurrencyCache }) => {
+    import('../lib/utils/currency').then(({ initializeCurrencyCache }) => {
       initializeCurrencyCache();
     });
     
