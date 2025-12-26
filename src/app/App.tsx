@@ -4,12 +4,12 @@ import { StatusBar, Style } from '@capacitor/status-bar';
 import { Keyboard } from '@capacitor/keyboard';
 import { SplashScreen } from '@capacitor/splash-screen';
 import { TransactionRecord } from '../lib/db';
-import { useDatabaseInit, useTransactions } from '../hooks/useDatabase';
+import { useDatabaseInit, useTransactions } from '../lib/hooks/useDatabase';
 import { dbHelpers, seedDefaultCategories } from '../lib/db';
 import { useAppStore } from '../store/useAppStore';
 import { AlertProvider } from '../components/context/AlertProvider';
-import { ErrorBoundary } from '../utils/errorBoundary';
-import { isNativePlatform, haptics } from '../utils/native';
+import { ErrorBoundary } from '../lib/utils/errorBoundary';
+import { isNativePlatform, haptics } from '../lib/utils/native';
 import { BottomTabBar } from '../components/layout/BottomTabBar';
 import { PageHeader } from '../components/layout/PageHeader';
 import { AddTransactionModal } from '../components/layout/AddTransactionModal';
@@ -70,7 +70,7 @@ const App: React.FC = () => {
     initNative();
     
     // Initialize currency cache
-    import('../utils/currency').then(({ initializeCurrencyCache }) => {
+    import('../lib/utils/currency').then(({ initializeCurrencyCache }) => {
       initializeCurrencyCache();
     });
     
@@ -98,7 +98,19 @@ const App: React.FC = () => {
 
     const handlePopState = () => {
       if (isAddModalOpen) {
-        handleCloseModal();
+        // handleCloseModal is not available here due to closure/ordering, but we can toggle state directly or use ref
+        // However, handleCloseModal is defined below.
+        // We should move this effect or use a ref for the handler.
+        // Or simply set the state directly since we are inside the component.
+        setIsClosingAddModal(true);
+        setTimeout(() => {
+          setIsAddModalOpen(false);
+          setIsClosingAddModal(false);
+          // Clean up history state after animation
+          if (window.history.state?.modal === 'add-transaction') {
+            window.history.back();
+          }
+        }, 350);
         return;
       }
       
@@ -115,7 +127,15 @@ const App: React.FC = () => {
     // Android back button
     const backButtonListener = CapacitorApp.addListener('backButton', ({ canGoBack }) => {
       if (isAddModalOpen) {
-        handleCloseModal();
+        setIsClosingAddModal(true);
+        setTimeout(() => {
+          setIsAddModalOpen(false);
+          setIsClosingAddModal(false);
+          // Clean up history state after animation
+          if (window.history.state?.modal === 'add-transaction') {
+            window.history.back();
+          }
+        }, 350);
         return;
       }
 
@@ -135,7 +155,7 @@ const App: React.FC = () => {
       window.removeEventListener('popstate', handlePopState);
       backButtonListener.then(listener => listener.remove());
     };
-  }, [isInitialized, showOnboarding, activeTab, isAddModalOpen, handleCloseModal]);
+  }, [isInitialized, showOnboarding, activeTab, isAddModalOpen]);
 
   const addTransaction = useCallback(async (t: Omit<TransactionRecord, 'id' | 'createdAt' | 'updatedAt'>) => {
     await addDbTransaction(t);

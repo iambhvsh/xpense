@@ -562,7 +562,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClearData }) => {
 
       {/* API Key Modal */}
       {showApiKeyModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 animate-fade-in backdrop-blur-sm" onClick={() => setShowApiKeyModal(false)} style={{ animationDuration: '0.3s' }} />
           <div className="relative bg-[#1C1C1E] rounded-[14px] w-full max-w-[340px] overflow-hidden animate-scale-in shadow-2xl">
             <div className="px-4 pt-5 pb-4">
